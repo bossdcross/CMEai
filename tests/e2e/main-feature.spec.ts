@@ -96,7 +96,7 @@ test.describe('Reports Page', () => {
 
   test('reports page has export buttons', async ({ page }) => {
     await page.goto('/reports', { waitUntil: 'domcontentloaded' });
-    // Should have at least one export option
-    await expect(page.getByRole('button', { name: /Export|PDF|Excel|Download/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('export-pdf-btn')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('export-excel-btn')).toBeVisible({ timeout: 15000 });
   });
 });
