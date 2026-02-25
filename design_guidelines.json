@@ -1,0 +1,162 @@
+{
+  "identity": {
+    "name": "E1",
+    "archetype": "The Anti-AI Designer",
+    "mission": "Create a 'Clinical Zen' aesthetic that balances medical authority with modern SaaS fluidity. Avoid sterile hospital whites and generic blue gradients.",
+    "tone": "Precision, Trust, Calm, Progress"
+  },
+  "context": {
+    "app_type": "Medical CME Tracker (SaaS Dashboard)",
+    "target_audience": "Physicians, Nurse Practitioners, PAs",
+    "device_priority": "Mobile-First (for scanning) -> Desktop (for management)",
+    "theme_mode": "Light (Primary) / Dark (Secondary Toggle)"
+  },
+  "design_system": {
+    "colors": {
+      "palette_name": "Clinical Zen",
+      "base": {
+        "background": "#F8FAFC", 
+        "foreground": "#0F172A",
+        "card": "#FFFFFF",
+        "border": "#E2E8F0"
+      },
+      "brand": {
+        "primary": "#4F46E5", 
+        "primary_foreground": "#FFFFFF",
+        "secondary": "#E0E7FF",
+        "secondary_foreground": "#3730A3",
+        "accent": "#0EA5E9"
+      },
+      "status": {
+        "success": "#10B981", 
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      },
+      "rules": "No large gradients. Use solid colors or extremely subtle mesh gradients (max 5% opacity). Text must be Slate-900 for headings, Slate-500 for secondary."
+    },
+    "typography": {
+      "font_family_headings": "Manrope, sans-serif",
+      "font_family_body": "Inter, sans-serif",
+      "scale": {
+        "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+        "h2": "text-3xl font-semibold tracking-tight",
+        "h3": "text-2xl font-semibold",
+        "body": "text-base leading-relaxed text-slate-600",
+        "small": "text-sm font-medium text-slate-500 uppercase tracking-wider"
+      },
+      "rules": "Headings must utilize Manrope for a distinct, geometric look. Never use Inter for H1/H2."
+    },
+    "spacing": {
+      "container_padding": "p-4 md:p-8 lg:p-12",
+      "section_gap": "gap-8",
+      "element_gap": "gap-4",
+      "border_radius": "rounded-xl",
+      "layout_rules": "Use the 'Bento Grid' strategy. Avoid equal-width columns where possible. Create hierarchy through size variation."
+    },
+    "shadows": {
+      "card": "shadow-[0_1px_3px_0_rgb(0,0,0,0.1),0_1px_2px_-1px_rgb(0,0,0,0.1)]",
+      "hover": "shadow-[0_4px_6px_-1px_rgb(0,0,0,0.1),0_2px_4px_-2px_rgb(0,0,0,0.1)]",
+      "float": "shadow-[0_20px_25px_-5px_rgb(0,0,0,0.1),0_8px_10px_-6px_rgb(0,0,0,0.1)]"
+    }
+  },
+  "visual_assets": {
+    "images": [
+      {
+        "category": "Hero / Landing",
+        "url": "https://images.pexels.com/photos/35260793/pexels-photo-35260793.jpeg",
+        "description": "Confident female doctor smiling, conveys trust and ease.",
+        "usage": "Landing page hero section or login side panel."
+      },
+      {
+        "category": "Testimonials / Profile",
+        "url": "https://images.unsplash.com/photo-1645066928295-2506defde470",
+        "description": "Male doctor in white coat, professional.",
+        "usage": "User profile placeholder or testimonial avatar."
+      },
+      {
+        "category": "Background / Texture",
+        "url": "https://images.unsplash.com/photo-1648708989736-ce3c2d9f90f2",
+        "description": "Clean abstract pattern.",
+        "usage": "Subtle background for the 'Upload' or 'Scan' area to reduce visual noise."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px or 2px. Rounded corners.",
+      "special_instructions": "Use 'ScanLine' for QR, 'UploadCloud' for certificates, 'Award' for credits."
+    }
+  },
+  "layout_strategies": {
+    "dashboard_grid": {
+      "type": "Bento Grid (Mode B - High Density)",
+      "structure": [
+        "Hero: col-span-full md:col-span-8 lg:col-span-8 (Progress Ring & Summary)",
+        "Secondary: col-span-full md:col-span-4 lg:col-span-4 (Upcoming Deadlines List)",
+        "Tertiary: col-span-full md:col-span-4 (Quick Upload / Scan Action)",
+        "Quaternary: col-span-full md:col-span-8 (Recent Certificates Table)"
+      ]
+    },
+    "certificate_list": {
+      "style": "Table for Desktop, Cards for Mobile.",
+      "interaction": "Row click opens 'Detail Modal' with zoomed-in certificate view."
+    },
+    "ocr_interface": {
+      "layout": "Split View (Desktop) / Stacked (Mobile)",
+      "left_panel": "Image Preview with crop/zoom tools.",
+      "right_panel": "Form fields pre-filled with OCR data for verification."
+    }
+  },
+  "components": {
+    "charts": {
+      "library": "recharts",
+      "style": "Minimalist. Remove grid lines. Use tooltips for values. Donut chart for progress."
+    },
+    "scanner": {
+      "library": "react-qr-reader (or similar web API)",
+      "ui": "Full-screen overlay on mobile with a clear 'viewport' box."
+    },
+    "upload": {
+      "library": "react-dropzone",
+      "style": "Dotted border container, large touch target, subtle hover animation."
+    },
+    "buttons": {
+      "primary": "bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm font-medium transition-all",
+      "secondary": "bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg transition-all",
+      "danger": "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+    }
+  },
+  "motion": {
+    "type": "Clinical Precision",
+    "properties": "transition-all duration-200 ease-out",
+    "entrance": "Fade in with slight upward slide (y-2 -> y-0).",
+    "hover": "Scale 1.01 or 1.02. Never more.",
+    "interactions": "Buttons should feel 'tactile' (active:scale-95)."
+  },
+  "accessibility": {
+    "contrast": "Ensure text is slate-600+ on light backgrounds. WCAG AA compliant.",
+    "focus": "Visible ring-2 ring-indigo-500 ring-offset-2 on all interactive elements.",
+    "text_scaling": "Support dynamic type sizes."
+  },
+  "universal_guidelines": {
+    "do_not": [
+      "Do NOT use generic 'blue' (#3B82F6) as the primary brand color.",
+      "Do NOT use 'Inter' for headings.",
+      "Do NOT use full-screen gradients.",
+      "Do NOT center text in the dashboard widgets (align left for readability)."
+    ],
+    "must_do": [
+      "Use 'sonner' for toast notifications.",
+      "Add 'data-testid' to all interactive elements.",
+      "Use 'Manrope' font for all headings.",
+      "Implement Dark Mode toggle but prioritize Light Mode polish."
+    ]
+  },
+  "instructions_to_main_agent": {
+    "1": "Install 'Manrope' font via Google Fonts or package.",
+    "2": "Set up Tailwind colors to match the 'Clinical Zen' palette.",
+    "3": "Build the Dashboard using the 'Bento Grid' layout specified.",
+    "4": "Create a 'CertificateCard' component that handles the OCR status display (Processing/Verified).",
+    "5": "Use the provided image URLs for the landing page and empty states."
+  }
+}
