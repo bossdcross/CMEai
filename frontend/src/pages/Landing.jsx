@@ -50,7 +50,7 @@ const Landing = () => {
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
               <Award className="w-5 h-5 text-white" />
             </div>
-            <span className="font-heading font-bold text-xl text-slate-900">CME Tracker</span>
+            <span className="font-heading font-bold text-xl text-slate-900">CME<span className="text-indigo-600">ai</span></span>
           </div>
           <Button 
             onClick={login}
