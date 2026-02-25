@@ -47,6 +47,9 @@ class User(BaseModel):
     name: str
     picture: Optional[str] = None
     profession: Optional[str] = None  # physician, np_pa, nurse
+    npi_number: Optional[str] = None  # National Provider Identifier
+    npi_verified: bool = False  # Whether NPI has been validated
+    npi_data: Optional[Dict[str, Any]] = None  # Data from NPPES registry
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
