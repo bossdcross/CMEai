@@ -1,34 +1,146 @@
-.App-logo {
-    height: 40vmin;
+/* App-specific styles */
+.App {
+    min-height: 100vh;
+}
+
+/* Gradient overlays for cards */
+.gradient-overlay {
+    position: relative;
+    overflow: hidden;
+}
+
+.gradient-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(14, 165, 233, 0.03) 100%);
     pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
+/* Progress ring animation */
+@keyframes progress-ring {
     from {
-        transform: rotate(0deg);
+        stroke-dashoffset: 251.2;
     }
-    to {
-        transform: rotate(360deg);
+}
+
+.progress-ring circle {
+    transition: stroke-dashoffset 0.5s ease-out;
+}
+
+/* Card hover effects */
+.card-hover {
+    transition: all 0.2s ease-out;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Button active state */
+.btn-active:active {
+    transform: scale(0.98);
+}
+
+/* Upload zone styles */
+.upload-zone {
+    border: 2px dashed hsl(var(--border));
+    border-radius: var(--radius);
+    transition: all 0.2s ease-out;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-active {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+}
+
+/* QR Scanner overlay */
+.scanner-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 50;
+}
+
+.scanner-viewport {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 280px;
+    height: 280px;
+    border: 3px solid hsl(var(--primary));
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+/* Table styles */
+.data-table th {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+/* Badge variants */
+.badge-success {
+    background: hsl(160 84% 39% / 0.1);
+    color: hsl(160 84% 39%);
+}
+
+.badge-warning {
+    background: hsl(38 92% 50% / 0.1);
+    color: hsl(38 92% 50%);
+}
+
+.badge-error {
+    background: hsl(0 84% 60% / 0.1);
+    color: hsl(0 84% 60%);
+}
+
+.badge-info {
+    background: hsl(199 89% 48% / 0.1);
+    color: hsl(199 89% 48%);
+}
+
+/* Sidebar styles */
+.sidebar-link {
+    transition: all 0.15s ease-out;
+}
+
+.sidebar-link:hover {
+    background: hsl(var(--muted));
+}
+
+.sidebar-link.active {
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.empty-state svg {
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 1rem;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white;
     }
 }
