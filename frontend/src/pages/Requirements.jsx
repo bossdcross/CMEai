@@ -419,14 +419,14 @@ const Requirements = () => {
                 <div>
                   <Label htmlFor="credit_type">Credit Type</Label>
                   <Select
-                    value={formData.credit_type}
-                    onValueChange={(value) => setFormData({ ...formData, credit_type: value })}
+                    value={formData.credit_type || "any"}
+                    onValueChange={(value) => setFormData({ ...formData, credit_type: value === "any" ? "" : value })}
                   >
                     <SelectTrigger data-testid="req-credit-type-select">
                       <SelectValue placeholder="Any type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any Type</SelectItem>
+                      <SelectItem value="any">Any Type</SelectItem>
                       {cmeTypes.map((type) => (
                         <SelectItem key={type.id} value={type.id}>
                           {type.name}
