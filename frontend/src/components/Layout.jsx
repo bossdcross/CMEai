@@ -57,7 +57,7 @@ const Layout = ({ children }) => {
                   <Award className="w-5 h-5 text-white" />
                 </div>
                 <span className="font-heading font-bold text-lg text-slate-900 hidden sm:block">
-                  CME Tracker
+                  CME<span className="text-indigo-600">ai</span>
                 </span>
               </Link>
             </div>
