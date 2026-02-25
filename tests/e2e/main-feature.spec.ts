@@ -74,12 +74,12 @@ test.describe('Requirements Page', () => {
 
   test('requirements page loads', async ({ page }) => {
     await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: /Requirements|Goals/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Requirements & Goals' })).toBeVisible({ timeout: 15000 });
   });
 
   test('requirements page has add goal button', async ({ page }) => {
     await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('button', { name: /Add|New|Create/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('add-requirement-btn')).toBeVisible({ timeout: 15000 });
   });
 });
 
