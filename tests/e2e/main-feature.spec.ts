@@ -1,0 +1,110 @@
+import { test, expect } from '@playwright/test';
+import { setupAuthSession, dismissToasts } from '../fixtures/helpers';
+
+test.describe('Dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAuthSession(page);
+    await dismissToasts(page);
+  });
+
+  test('dashboard loads with welcome message', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: /Welcome back/ })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('dashboard shows overall progress card', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Overall Progress')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('dashboard shows credits earned and active goals', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Credits Earned')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Active Goals')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('dashboard shows recent certificates section', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Recent Certificates')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('dashboard shows quick actions', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Add Certificate/ })).toBeVisible();
+  });
+
+  test('dashboard Add Certificate button is clickable', async ({ page }) => {
+    await page.evaluate(() => { const badge = document.querySelector('[class*="emergent"], [id*="emergent-badge"]'); if (badge) (badge as HTMLElement).style.display = 'none'; });
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: /Add Certificate/ })).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /Add Certificate/ }).click({ force: true });
+    // Should navigate to certificates page
+    await expect(page).toHaveURL(/\/certificates/);
+  });
+
+  test('unauthenticated user redirected from dashboard to landing', async ({ page }) => {
+    // No auth cookie set
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
+  });
+});
+
+test.describe('Certificates Page', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAuthSession(page);
+    await dismissToasts(page);
+  });
+
+  test('certificates page loads', async ({ page }) => {
+    await page.goto('/certificates', { waitUntil: 'domcontentloaded' });
+    // Page should load - look for main heading
+    await expect(page.getByRole('heading', { name: /Certificates|My CME/ })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('certificates page has add button', async ({ page }) => {
+    await page.goto('/certificates', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: /Add Certificate|Add New/ })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('certificates page has search or filter controls', async ({ page }) => {
+    await page.goto('/certificates', { waitUntil: 'domcontentloaded' });
+    // Search input or filter should exist
+    await expect(page.locator('input[placeholder*="Search"], input[type="search"], input[placeholder*="search"]')).toBeVisible({ timeout: 15000 });
+  });
+});
+
+test.describe('Requirements Page', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAuthSession(page);
+    await dismissToasts(page);
+  });
+
+  test('requirements page loads', async ({ page }) => {
+    await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: /Requirements|Goals/ })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('requirements page has add goal button', async ({ page }) => {
+    await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: /Add|New|Create/ })).toBeVisible({ timeout: 15000 });
+  });
+});
+
+test.describe('Reports Page', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAuthSession(page);
+    await dismissToasts(page);
+  });
+
+  test('reports page loads', async ({ page }) => {
+    await page.goto('/reports', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: /Reports|Transcript/ })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('reports page has export buttons', async ({ page }) => {
+    await page.goto('/reports', { waitUntil: 'domcontentloaded' });
+    // Should have at least one export option
+    await expect(page.getByRole('button', { name: /Export|PDF|Excel|Download/ })).toBeVisible({ timeout: 15000 });
+  });
+});
