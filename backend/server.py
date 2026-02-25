@@ -321,6 +321,121 @@ async def get_profile(user: User = Depends(get_current_user)):
         }
     }
 
+# ============ NPI VALIDATION ============
+
+def validate_npi_checksum(npi: str) -> bool:
+    """Validate NPI using Luhn algorithm (ISO/IEC 7812)"""
+    if not npi or len(npi) != 10 or not npi.isdigit():
+        return False
+    
+    # Prefix with 80840 for healthcare NPI
+    prefixed = "80840" + npi
+    
+    # Luhn algorithm
+    total = 0
+    for i, digit in enumerate(reversed(prefixed)):
+        d = int(digit)
+        if i % 2 == 1:  # Double every second digit from right
+            d *= 2
+            if d > 9:
+                d -= 9
+        total += d
+    
+    return total % 10 == 0
+
+async def lookup_npi_registry(npi: str) -> Optional[Dict[str, Any]]:
+    """Look up NPI in NPPES registry"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://npiregistry.cms.hhs.gov/api/?number={npi}&version=2.1",
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("result_count", 0) > 0:
+                    result = data["results"][0]
+                    basic = result.get("basic", {})
+                    
+                    # Extract relevant info
+                    return {
+                        "npi": result.get("number"),
+                        "entity_type": result.get("enumeration_type"),
+                        "first_name": basic.get("first_name"),
+                        "last_name": basic.get("last_name"),
+                        "organization_name": basic.get("organization_name"),
+                        "credential": basic.get("credential"),
+                        "status": basic.get("status"),
+                        "enumeration_date": basic.get("enumeration_date"),
+                        "last_updated": basic.get("last_updated"),
+                        "taxonomies": [
+                            {
+                                "code": t.get("code"),
+                                "desc": t.get("desc"),
+                                "primary": t.get("primary")
+                            }
+                            for t in result.get("taxonomies", [])
+                        ]
+                    }
+        return None
+    except Exception as e:
+        logger.error(f"NPI lookup error: {e}")
+        return None
+
+@api_router.post("/users/npi/validate")
+async def validate_npi(request: Request, user: User = Depends(get_current_user)):
+    """Validate and link NPI number to profile"""
+    body = await request.json()
+    npi = body.get("npi", "").strip()
+    
+    if not npi:
+        raise HTTPException(status_code=400, detail="NPI number is required")
+    
+    # Format validation
+    if not validate_npi_checksum(npi):
+        raise HTTPException(status_code=400, detail="Invalid NPI format. Must be a valid 10-digit NPI number.")
+    
+    # Lookup in NPPES registry
+    npi_data = await lookup_npi_registry(npi)
+    
+    if not npi_data:
+        raise HTTPException(status_code=404, detail="NPI not found in NPPES registry. Please verify the number.")
+    
+    # Update user with NPI data
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {
+            "npi_number": npi,
+            "npi_verified": True,
+            "npi_data": npi_data,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    updated_user = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    return {
+        "message": "NPI verified successfully",
+        "user": updated_user,
+        "npi_data": npi_data
+    }
+
+@api_router.delete("/users/npi")
+async def remove_npi(user: User = Depends(get_current_user)):
+    """Remove NPI number from profile"""
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {
+            "npi_number": None,
+            "npi_verified": False,
+            "npi_data": None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    updated_user = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    return {"message": "NPI removed", "user": updated_user}
+
 # ============ CME TYPES ROUTES ============
 
 @api_router.get("/cme-types")
