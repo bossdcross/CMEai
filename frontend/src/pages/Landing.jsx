@@ -102,7 +102,7 @@ const Landing = () => {
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-2xl blur-3xl opacity-20"></div>
                 <img 
-                  src="https://images.pexels.com/photos/35260793/pexels-photo-35260793.jpeg" 
+                  src="https://images.unsplash.com/photo-1659353888906-adb3e0041693?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxjb25maWRlbnQlMjBmZW1hbGUlMjBkb2N0b3IlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzIwMzAzOTF8MA&ixlib=rb-4.1.0&q=85" 
                   alt="Healthcare professional"
                   className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
                 />
