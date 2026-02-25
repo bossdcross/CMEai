@@ -443,6 +443,7 @@ async def upload_certificate(
     cert_dict["updated_at"] = cert_dict["updated_at"].isoformat()
     
     await db.certificates.insert_one(cert_dict)
+    cert_dict.pop("_id", None)  # Remove MongoDB's _id to avoid serialization error
     
     # Process OCR in background (we'll return immediately and process async)
     # For now, we'll do it synchronously for simplicity
