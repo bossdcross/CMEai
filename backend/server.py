@@ -364,6 +364,7 @@ async def create_certificate(cert_data: CertificateCreate, user: User = Depends(
     cert_dict["updated_at"] = cert_dict["updated_at"].isoformat()
     
     await db.certificates.insert_one(cert_dict)
+    cert_dict.pop("_id", None)  # Remove MongoDB's _id to avoid serialization error
     
     # Update requirement progress
     await update_requirement_progress(user.user_id)
@@ -594,6 +595,7 @@ async def import_eeds_certificate(request: Request, user: User = Depends(get_cur
     cert_dict["updated_at"] = cert_dict["updated_at"].isoformat()
     
     await db.certificates.insert_one(cert_dict)
+    cert_dict.pop("_id", None)  # Remove MongoDB's _id to avoid serialization error
     
     # Update requirement progress
     await update_requirement_progress(user.user_id)
