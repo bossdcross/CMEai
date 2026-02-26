@@ -26,6 +26,12 @@ Create an app that will store CME certificates and create/export CME transcripts
 
 ## What's Been Implemented
 
+### February 26, 2026
+- [x] Added manual edit functionality for certificates (OCR failures can now be manually corrected)
+- [x] Edit dialog shows certificate image preview alongside editable form
+- [x] Edit button added to both table actions and view dialog
+- [x] Upload flow now automatically opens edit dialog when OCR fails
+
 ### February 25, 2026
 - [x] Landing page with CMEai branding
 - [x] Google OAuth authentication flow
