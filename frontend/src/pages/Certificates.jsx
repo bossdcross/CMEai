@@ -42,7 +42,9 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
-  Clock
+  Clock,
+  Save,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,12 +53,24 @@ const Certificates = () => {
   const [cmeTypes, setCmeTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
   const [formData, setFormData] = useState({
+    title: "",
+    provider: "",
+    credits: "",
+    credit_type: "",
+    subject: "",
+    completion_date: "",
+    expiration_date: "",
+    certificate_number: ""
+  });
+  const [editData, setEditData] = useState({
     title: "",
     provider: "",
     credits: "",
@@ -105,8 +119,12 @@ const Certificates = () => {
         setShowViewDialog(true);
       } else if (response.data.ocr_status === "processing") {
         toast.info("Certificate uploaded. Processing with OCR...");
+        setSelectedCert(response.data);
+        openEditDialog(response.data);
       } else {
-        toast.warning("Certificate uploaded but OCR failed. Please edit manually.");
+        toast.warning("Certificate uploaded but OCR failed. Please enter details manually.");
+        setSelectedCert(response.data);
+        openEditDialog(response.data);
       }
       
       fetchData();
@@ -157,14 +175,41 @@ const Certificates = () => {
     }
   };
 
-  const handleUpdate = async (certId, updates) => {
+  const openEditDialog = (cert) => {
+    setSelectedCert(cert);
+    setEditData({
+      title: cert.title || "",
+      provider: cert.provider || "",
+      credits: cert.credits?.toString() || "",
+      credit_type: cert.credit_type || "",
+      subject: cert.subject || "",
+      completion_date: cert.completion_date || "",
+      expiration_date: cert.expiration_date || "",
+      certificate_number: cert.certificate_number || ""
+    });
+    setShowViewDialog(false);
+    setShowEditDialog(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    
     try {
-      await api.put(`/certificates/${certId}`, updates);
-      toast.success("Certificate updated");
+      const updates = {
+        ...editData,
+        credits: parseFloat(editData.credits) || 0
+      };
+      
+      await api.put(`/certificates/${selectedCert.certificate_id}`, updates);
+      toast.success("Certificate updated successfully!");
+      setShowEditDialog(false);
       fetchData();
-      setShowViewDialog(false);
     } catch (error) {
       toast.error("Failed to update certificate");
+      console.error("Update error:", error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,7 +238,7 @@ const Certificates = () => {
       case "processing":
         return <Badge className="bg-amber-50 text-amber-700"><Clock className="w-3 h-3 mr-1" />Processing</Badge>;
       case "failed":
-        return <Badge className="bg-red-50 text-red-700"><AlertCircle className="w-3 h-3 mr-1" />Review</Badge>;
+        return <Badge className="bg-red-50 text-red-700"><AlertCircle className="w-3 h-3 mr-1" />Needs Review</Badge>;
       default:
         return null;
     }
@@ -264,6 +309,9 @@ const Certificates = () => {
                   </p>
                   <p className="text-sm text-slate-500 mt-1">
                     or click to browse • Supports PNG, JPG, PDF
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    You can edit details manually if OCR doesn't extract them correctly
                   </p>
                 </div>
               )}
@@ -357,6 +405,14 @@ const Certificates = () => {
                               data-testid={`view-cert-${cert.certificate_id}`}
                             >
                               <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(cert)}
+                              data-testid={`edit-cert-${cert.certificate_id}`}
+                            >
+                              <Edit className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -540,11 +596,13 @@ const Certificates = () => {
                     </p>
                   </div>
                 )}
-                {selectedCert.ocr_status === "failed" && (
+                {(selectedCert.ocr_status === "failed" || selectedCert.ocr_status === "processing" || !selectedCert.ocr_status) && (
                   <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
                     <p className="text-sm text-amber-700 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
-                      OCR failed. Please verify the information manually.
+                      {selectedCert.ocr_status === "failed" 
+                        ? "OCR failed. Click Edit to enter details manually."
+                        : "Please verify and edit the certificate details if needed."}
                     </p>
                   </div>
                 )}
@@ -554,7 +612,170 @@ const Certificates = () => {
               <Button variant="outline" onClick={() => setShowViewDialog(false)}>
                 Close
               </Button>
+              <Button 
+                onClick={() => openEditDialog(selectedCert)} 
+                className="bg-indigo-600 hover:bg-indigo-700"
+                data-testid="edit-from-view-btn"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Details
+              </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Certificate Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-heading flex items-center gap-2">
+                <Edit className="w-5 h-5 text-indigo-600" />
+                Edit Certificate
+              </DialogTitle>
+            </DialogHeader>
+            {selectedCert && (
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                {/* Show image preview if available */}
+                {selectedCert.image_url && (
+                  <div className="rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                    <img
+                      src={selectedCert.image_url}
+                      alt="Certificate"
+                      className="w-full h-auto max-h-[200px] object-contain"
+                    />
+                  </div>
+                )}
+
+                {(selectedCert.ocr_status === "failed" || selectedCert.ocr_status === "processing") && (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <p className="text-sm text-amber-700 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>
+                        {selectedCert.ocr_status === "failed" 
+                          ? "OCR couldn't extract the certificate details. Please enter the information manually below."
+                          : "Please review and correct the extracted information as needed."}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="edit_title">Title *</Label>
+                    <Input
+                      id="edit_title"
+                      value={editData.title}
+                      onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+                      placeholder="e.g., Annual CME Conference 2024"
+                      required
+                      data-testid="edit-cert-title-input"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit_provider">Provider *</Label>
+                      <Input
+                        id="edit_provider"
+                        value={editData.provider}
+                        onChange={(e) => setEditData({ ...editData, provider: e.target.value })}
+                        placeholder="e.g., ACCME"
+                        required
+                        data-testid="edit-cert-provider-input"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_credits">Credits *</Label>
+                      <Input
+                        id="edit_credits"
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={editData.credits}
+                        onChange={(e) => setEditData({ ...editData, credits: e.target.value })}
+                        placeholder="e.g., 1.5"
+                        required
+                        data-testid="edit-cert-credits-input"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_credit_type">Credit Type *</Label>
+                    <Select
+                      value={editData.credit_type}
+                      onValueChange={(value) => setEditData({ ...editData, credit_type: value })}
+                      required
+                    >
+                      <SelectTrigger data-testid="edit-cert-type-select">
+                        <SelectValue placeholder="Select credit type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cmeTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_subject">Subject</Label>
+                    <Input
+                      id="edit_subject"
+                      value={editData.subject}
+                      onChange={(e) => setEditData({ ...editData, subject: e.target.value })}
+                      placeholder="e.g., Cardiology"
+                      data-testid="edit-cert-subject-input"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit_completion_date">Completion Date *</Label>
+                      <Input
+                        id="edit_completion_date"
+                        type="date"
+                        value={editData.completion_date}
+                        onChange={(e) => setEditData({ ...editData, completion_date: e.target.value })}
+                        required
+                        data-testid="edit-cert-date-input"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_certificate_number">Certificate #</Label>
+                      <Input
+                        id="edit_certificate_number"
+                        value={editData.certificate_number}
+                        onChange={(e) => setEditData({ ...editData, certificate_number: e.target.value })}
+                        placeholder="Optional"
+                        data-testid="edit-cert-number-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-indigo-600 hover:bg-indigo-700" 
+                    disabled={saving}
+                    data-testid="save-edit-cert-btn"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
