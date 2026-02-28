@@ -442,6 +442,53 @@ const Requirements = () => {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Provider Filter */}
+                      {req.providers?.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                            <Building2 className="w-3 h-3" /> Required Providers:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {req.providers.map((provider, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                {provider}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Subject Filter */}
+                      {req.subjects?.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                            <BookOpen className="w-3 h-3" /> Required Subjects:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {req.subjects.map((subject, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                {subject}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Filter Summary */}
+                      {hasFilters(req) && (
+                        <div className="mb-3 px-2 py-1.5 bg-slate-50 rounded-md">
+                          <p className="text-xs text-slate-500 flex items-center gap-1">
+                            <Filter className="w-3 h-3" />
+                            Filtering by: {getFilterSummary(req)}
+                          </p>
+                          {req.matching_certificates !== undefined && (
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              {req.matching_certificates} certificate(s) match these criteria
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <div className="space-y-3">
                         <div>
