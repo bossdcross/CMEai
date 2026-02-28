@@ -26,7 +26,28 @@ Create an app that will store CME certificates and create/export CME transcripts
 
 ## What's Been Implemented
 
+### February 28, 2026 - EEDS Feature Parity (P0 + P1)
+- [x] **Self-Reported Credits**: Log journal clubs, self-study, presentations, teaching, manuscript review, tumor boards, grand rounds, case conferences (11 activity types)
+- [x] **CME Events Calendar**: Track upcoming conferences, courses, events with registration status and attendance tracking
+- [x] **6-Digit Passcode Sign-In**: Event attendance verification via passcode (similar to EEDS event sign-in)
+- [x] **CME Evaluations**: Post-event feedback forms with star ratings (1-5), would-recommend, learning objectives met, practice change planned
+- [x] **ACCME PARS Export**: ACCME-compliant Excel export for annual CME reporting requirements
+- [x] **Speaker Disclosures**: Track speaker COI and financial relationships for events/certificates
+- [x] **Course Materials Storage**: Attach handouts, slides, videos to certificates or events
+- [x] **Self-reported credits count toward requirements** (updated progress calculation)
+- [x] **Navigation updated**: Dashboard → Certificates → Self-Reported → Events → Requirements → Evaluations → Reports
+
 ### February 28, 2026 - Goal Filtering Enhancement
+- [x] **Multi-Criteria Goal Filtering**: Goals can now be linked to specific CME certificates using combination filters
+  - Provider filter: Only count certificates from specific providers (e.g., "Mayo Clinic")
+  - Subject filter: Only count certificates on specific subjects (e.g., "Cardiology")
+  - Credit type filter: Only count specific credit types
+  - Year range filter: Only count certificates within a date range
+- [x] **Prevents Inappropriate Completion**: Goals only count certificates matching ALL specified criteria
+- [x] **Filter Options API**: New endpoint `/api/certificates/filters/options` provides autocomplete suggestions from user's existing certificates
+- [x] **UI Enhancement**: Requirement cards display provider/subject badges and filter summary with matching certificate count
+
+### February 28, 2026 - OCR Enhancement & Bug Fixes
 - [x] **Multi-Criteria Goal Filtering**: Goals can now be linked to specific CME certificates using combination filters
   - Provider filter: Only count certificates from specific providers (e.g., "Mayo Clinic")
   - Subject filter: Only count certificates on specific subjects (e.g., "Cardiology")
