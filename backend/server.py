@@ -1048,20 +1048,26 @@ async def get_report_summary(
         {"_id": 0}
     ).to_list(1000)
     
-    # Group by credit type
+    # Group by credit type (handle multiple credit_types)
     by_type = {}
     total_credits = 0
     
     for cert in certs:
-        credit_type = cert.get("credit_type", "unknown")
+        credit_types = cert.get("credit_types", [])
+        if not credit_types and cert.get("credit_type"):
+            credit_types = [cert.get("credit_type")]
+        if not credit_types:
+            credit_types = ["unknown"]
+        
         credits = cert.get("credits", 0)
-        
-        if credit_type not in by_type:
-            by_type[credit_type] = {"credits": 0, "count": 0}
-        
-        by_type[credit_type]["credits"] += credits
-        by_type[credit_type]["count"] += 1
         total_credits += credits
+        
+        # Distribute credits to each type (for reporting purposes)
+        for credit_type in credit_types:
+            if credit_type not in by_type:
+                by_type[credit_type] = {"credits": 0, "count": 0}
+            by_type[credit_type]["credits"] += credits
+            by_type[credit_type]["count"] += 1
     
     # Get requirements progress
     requirements = await db.requirements.find(
@@ -1076,6 +1082,56 @@ async def get_report_summary(
         "by_credit_type": by_type,
         "requirements": requirements,
         "certificates": certs
+    }
+
+@api_router.get("/reports/year-over-year")
+async def get_year_over_year_report(
+    user: User = Depends(get_current_user),
+    start_year: Optional[int] = None,
+    end_year: Optional[int] = None
+):
+    """Get year-over-year comparison data"""
+    current_year = datetime.now().year
+    end_year = end_year or current_year
+    start_year = start_year or (end_year - 4)  # Default to last 5 years
+    
+    years_data = []
+    
+    for year in range(start_year, end_year + 1):
+        # Get certificates for the year
+        certs = await db.certificates.find(
+            {"user_id": user.user_id, "completion_date": {"$regex": f"^{year}"}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Calculate totals
+        total_credits = sum(cert.get("credits", 0) for cert in certs)
+        
+        # Group by credit type
+        by_type = {}
+        for cert in certs:
+            credit_types = cert.get("credit_types", [])
+            if not credit_types and cert.get("credit_type"):
+                credit_types = [cert.get("credit_type")]
+            if not credit_types:
+                credit_types = ["unknown"]
+            
+            for credit_type in credit_types:
+                if credit_type not in by_type:
+                    by_type[credit_type] = 0
+                by_type[credit_type] += cert.get("credits", 0)
+        
+        years_data.append({
+            "year": year,
+            "total_certificates": len(certs),
+            "total_credits": total_credits,
+            "by_credit_type": by_type
+        })
+    
+    return {
+        "start_year": start_year,
+        "end_year": end_year,
+        "years": years_data
     }
 
 @api_router.get("/reports/export/pdf")
