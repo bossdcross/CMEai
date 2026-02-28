@@ -8,6 +8,7 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
 import { Textarea } from "../components/ui/textarea";
+import { Checkbox } from "../components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -42,11 +43,20 @@ const Requirements = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedReq, setSelectedReq] = useState(null);
+  
+  // Generate years for selection
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i);
+  const futureYears = Array.from({ length: 10 }, (_, i) => currentYear + i);
+  const allYears = [...new Set([...futureYears, ...years])].sort((a, b) => b - a);
+  
   const [formData, setFormData] = useState({
     name: "",
     requirement_type: "",
-    credit_type: "",
+    credit_types: [],
     credits_required: "",
+    start_year: "",
+    end_year: "",
     due_date: "",
     notes: ""
   });
@@ -77,14 +87,27 @@ const Requirements = () => {
     }
   };
 
+  const handleCreditTypeToggle = (typeId, isEdit = false) => {
+    setFormData(prev => ({
+      ...prev,
+      credit_types: prev.credit_types.includes(typeId)
+        ? prev.credit_types.filter(t => t !== typeId)
+        : [...prev.credit_types, typeId]
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
-      await api.post("/requirements", {
+      const data = {
         ...formData,
-        credits_required: parseFloat(formData.credits_required)
-      });
+        credits_required: parseFloat(formData.credits_required),
+        start_year: formData.start_year ? parseInt(formData.start_year) : null,
+        end_year: formData.end_year ? parseInt(formData.end_year) : null
+      };
+      
+      await api.post("/requirements", data);
       toast.success("Requirement added successfully!");
       setShowAddDialog(false);
       resetForm();
@@ -98,13 +121,18 @@ const Requirements = () => {
     e.preventDefault();
     
     try {
-      await api.put(`/requirements/${selectedReq.requirement_id}`, {
+      const data = {
         name: formData.name,
+        credit_types: formData.credit_types,
         credits_required: parseFloat(formData.credits_required),
+        start_year: formData.start_year ? parseInt(formData.start_year) : null,
+        end_year: formData.end_year ? parseInt(formData.end_year) : null,
         due_date: formData.due_date,
         notes: formData.notes,
         is_active: formData.is_active
-      });
+      };
+      
+      await api.put(`/requirements/${selectedReq.requirement_id}`, data);
       toast.success("Requirement updated!");
       setShowEditDialog(false);
       resetForm();
@@ -128,11 +156,14 @@ const Requirements = () => {
 
   const openEditDialog = (req) => {
     setSelectedReq(req);
+    const creditTypes = req.credit_types || (req.credit_type ? [req.credit_type] : []);
     setFormData({
       name: req.name,
       requirement_type: req.requirement_type,
-      credit_type: req.credit_type || "",
+      credit_types: creditTypes,
       credits_required: req.credits_required.toString(),
+      start_year: req.start_year?.toString() || "",
+      end_year: req.end_year?.toString() || "",
       due_date: req.due_date,
       notes: req.notes || "",
       is_active: req.is_active
@@ -144,8 +175,10 @@ const Requirements = () => {
     setFormData({
       name: "",
       requirement_type: "",
-      credit_type: "",
+      credit_types: [],
       credits_required: "",
+      start_year: "",
+      end_year: "",
       due_date: "",
       notes: ""
     });
@@ -154,7 +187,7 @@ const Requirements = () => {
 
   const getCreditTypeName = (typeId) => {
     const type = cmeTypes.find(t => t.id === typeId);
-    return type?.name || "Any Type";
+    return type?.name || typeId;
   };
 
   const getRequirementTypeName = (typeId) => {
@@ -192,6 +225,17 @@ const Requirements = () => {
       personal: "bg-slate-100 text-slate-700"
     };
     return colors[type] || "bg-slate-100 text-slate-700";
+  };
+
+  const formatYearRange = (req) => {
+    if (req.start_year && req.end_year) {
+      return `${req.start_year} - ${req.end_year}`;
+    } else if (req.start_year) {
+      return `${req.start_year}+`;
+    } else if (req.end_year) {
+      return `Up to ${req.end_year}`;
+    }
+    return "All Years";
   };
 
   if (loading) {
@@ -261,14 +305,21 @@ const Requirements = () => {
                 const statusInfo = getStatusInfo(req);
                 const daysLeft = getDaysUntilDue(req.due_date);
                 const StatusIcon = statusInfo.icon;
+                const creditTypes = req.credit_types || (req.credit_type ? [req.credit_type] : []);
 
                 return (
                   <Card key={req.requirement_id} className="border-slate-200 shadow-sm card-hover">
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-${statusInfo.color}-100`}>
-                            <StatusIcon className={`w-5 h-5 text-${statusInfo.color}-600`} />
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            statusInfo.color === "emerald" ? "bg-emerald-100" :
+                            statusInfo.color === "amber" ? "bg-amber-100" : "bg-indigo-100"
+                          }`}>
+                            <StatusIcon className={`w-5 h-5 ${
+                              statusInfo.color === "emerald" ? "text-emerald-600" :
+                              statusInfo.color === "amber" ? "text-amber-600" : "text-indigo-600"
+                            }`} />
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-heading font-semibold text-slate-900 truncate">
@@ -278,9 +329,10 @@ const Requirements = () => {
                               <Badge className={getRequirementTypeColor(req.requirement_type)}>
                                 {getRequirementTypeName(req.requirement_type)}
                               </Badge>
-                              {req.credit_type && (
+                              {(req.start_year || req.end_year) && (
                                 <Badge variant="outline" className="text-slate-600">
-                                  {getCreditTypeName(req.credit_type)}
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  {formatYearRange(req)}
                                 </Badge>
                               )}
                             </div>
@@ -306,6 +358,20 @@ const Requirements = () => {
                           </Button>
                         </div>
                       </div>
+
+                      {/* Credit Types */}
+                      {creditTypes.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs text-slate-500 mb-1">Accepted Credit Types:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {creditTypes.map((type, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {getCreditTypeName(type)}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-3">
                         <div>
@@ -380,7 +446,7 @@ const Requirements = () => {
 
         {/* Add Requirement Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-heading">Add Requirement</DialogTitle>
             </DialogHeader>
@@ -417,27 +483,6 @@ const Requirements = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="credit_type">Credit Type</Label>
-                  <Select
-                    value={formData.credit_type || "any"}
-                    onValueChange={(value) => setFormData({ ...formData, credit_type: value === "any" ? "" : value })}
-                  >
-                    <SelectTrigger data-testid="req-credit-type-select">
-                      <SelectValue placeholder="Any type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any Type</SelectItem>
-                      {cmeTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <Label htmlFor="credits_required">Credits Required *</Label>
                   <Input
                     id="credits_required"
@@ -451,18 +496,87 @@ const Requirements = () => {
                     data-testid="req-credits-input"
                   />
                 </div>
+              </div>
+              
+              {/* Year Range */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="due_date">Due Date *</Label>
-                  <Input
-                    id="due_date"
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                    required
-                    data-testid="req-due-date-input"
-                  />
+                  <Label htmlFor="start_year">Start Year</Label>
+                  <Select
+                    value={formData.start_year}
+                    onValueChange={(value) => setFormData({ ...formData, start_year: value })}
+                  >
+                    <SelectTrigger data-testid="req-start-year-select">
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {allYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">Certificates from this year onwards</p>
+                </div>
+                <div>
+                  <Label htmlFor="end_year">End Year</Label>
+                  <Select
+                    value={formData.end_year}
+                    onValueChange={(value) => setFormData({ ...formData, end_year: value })}
+                  >
+                    <SelectTrigger data-testid="req-end-year-select">
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {allYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">Certificates up to this year</p>
                 </div>
               </div>
+              
+              <div>
+                <Label htmlFor="due_date">Due Date *</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                  required
+                  data-testid="req-due-date-input"
+                />
+              </div>
+              
+              <div>
+                <Label>Credit Types (leave empty for any type)</Label>
+                <p className="text-xs text-slate-500 mb-2">Select specific credit types that can satisfy this requirement</p>
+                <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto p-2 border rounded-lg">
+                  {cmeTypes.map((type) => (
+                    <div key={type.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`req-type-${type.id}`}
+                        checked={formData.credit_types.includes(type.id)}
+                        onCheckedChange={() => handleCreditTypeToggle(type.id)}
+                      />
+                      <label
+                        htmlFor={`req-type-${type.id}`}
+                        className="text-sm cursor-pointer flex items-center gap-1"
+                      >
+                        {type.name}
+                        {type.is_custom && <Badge variant="outline" className="text-xs px-1">Custom</Badge>}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -488,7 +602,7 @@ const Requirements = () => {
 
         {/* Edit Requirement Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-heading">Edit Requirement</DialogTitle>
             </DialogHeader>
@@ -529,6 +643,67 @@ const Requirements = () => {
                   />
                 </div>
               </div>
+              
+              {/* Year Range */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_start_year">Start Year</Label>
+                  <Select
+                    value={formData.start_year}
+                    onValueChange={(value) => setFormData({ ...formData, start_year: value })}
+                  >
+                    <SelectTrigger data-testid="edit-req-start-year-select">
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {allYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit_end_year">End Year</Label>
+                  <Select
+                    value={formData.end_year}
+                    onValueChange={(value) => setFormData({ ...formData, end_year: value })}
+                  >
+                    <SelectTrigger data-testid="edit-req-end-year-select">
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {allYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Credit Types</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto p-2 border rounded-lg mt-1">
+                  {cmeTypes.map((type) => (
+                    <div key={type.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-req-type-${type.id}`}
+                        checked={formData.credit_types.includes(type.id)}
+                        onCheckedChange={() => handleCreditTypeToggle(type.id, true)}
+                      />
+                      <label htmlFor={`edit-req-type-${type.id}`} className="text-sm cursor-pointer">
+                        {type.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
               <div>
                 <Label htmlFor="edit_notes">Notes</Label>
                 <Textarea
