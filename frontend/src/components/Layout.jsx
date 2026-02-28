@@ -20,7 +20,10 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  BookOpen,
+  CalendarDays,
+  ClipboardCheck
 } from "lucide-react";
 
 const Layout = ({ children }) => {
@@ -32,9 +35,11 @@ const Layout = ({ children }) => {
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Certificates", href: "/certificates", icon: FileText },
+    { name: "Self-Reported", href: "/self-reported", icon: BookOpen },
+    { name: "Events", href: "/events", icon: CalendarDays },
     { name: "Requirements", href: "/requirements", icon: Target },
+    { name: "Evaluations", href: "/evaluations", icon: ClipboardCheck },
     { name: "Reports", href: "/reports", icon: BarChart3 },
-    { name: "QR Scanner", href: "/scanner", icon: ScanLine },
   ];
 
   const handleLogout = async () => {
