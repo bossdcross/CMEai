@@ -206,6 +206,8 @@ const Requirements = () => {
       name: req.name,
       requirement_type: req.requirement_type,
       credit_types: creditTypes,
+      providers: req.providers || [],
+      subjects: req.subjects || [],
       credits_required: req.credits_required.toString(),
       start_year: req.start_year?.toString() || "any",
       end_year: req.end_year?.toString() || "any",
@@ -213,6 +215,8 @@ const Requirements = () => {
       notes: req.notes || "",
       is_active: req.is_active
     });
+    setNewProvider("");
+    setNewSubject("");
     setShowEditDialog(true);
   };
 
@@ -221,12 +225,16 @@ const Requirements = () => {
       name: "",
       requirement_type: "",
       credit_types: [],
+      providers: [],
+      subjects: [],
       credits_required: "",
       start_year: "",
       end_year: "",
       due_date: "",
       notes: ""
     });
+    setNewProvider("");
+    setNewSubject("");
     setSelectedReq(null);
   };
 
