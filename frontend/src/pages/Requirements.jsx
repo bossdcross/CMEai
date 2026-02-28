@@ -510,7 +510,7 @@ const Requirements = () => {
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {allYears.map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -530,7 +530,7 @@ const Requirements = () => {
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {allYears.map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -656,7 +656,7 @@ const Requirements = () => {
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {allYears.map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -675,7 +675,7 @@ const Requirements = () => {
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {allYears.map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
