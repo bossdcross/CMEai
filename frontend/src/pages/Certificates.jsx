@@ -7,6 +7,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Checkbox } from "../components/ui/checkbox";
+import { Textarea } from "../components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +47,9 @@ import {
   Clock,
   Save,
   X,
-  Calendar
+  Calendar,
+  Download,
+  Upload as UploadIcon
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,7 +65,12 @@ const Certificates = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showCustomTypeDialog, setShowCustomTypeDialog] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [importData, setImportData] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [newCustomType, setNewCustomType] = useState({ name: "", description: "" });
   
   // Generate years from current year back to 1990
   const currentYear = new Date().getFullYear();
@@ -71,7 +80,7 @@ const Certificates = () => {
     title: "",
     provider: "",
     credits: "",
-    credit_type: "",
+    credit_types: [],
     subject: "",
     completion_date: "",
     expiration_date: "",
@@ -81,7 +90,7 @@ const Certificates = () => {
     title: "",
     provider: "",
     credits: "",
-    credit_type: "",
+    credit_types: [],
     subject: "",
     completion_date: "",
     expiration_date: "",
@@ -153,8 +162,31 @@ const Certificates = () => {
     disabled: uploading
   });
 
+  const handleCreditTypeToggle = (typeId, isEdit = false) => {
+    if (isEdit) {
+      setEditData(prev => ({
+        ...prev,
+        credit_types: prev.credit_types.includes(typeId)
+          ? prev.credit_types.filter(t => t !== typeId)
+          : [...prev.credit_types, typeId]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        credit_types: prev.credit_types.includes(typeId)
+          ? prev.credit_types.filter(t => t !== typeId)
+          : [...prev.credit_types, typeId]
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (formData.credit_types.length === 0) {
+      toast.error("Please select at least one credit type");
+      return;
+    }
     
     try {
       await api.post("/certificates", {
@@ -184,11 +216,12 @@ const Certificates = () => {
 
   const openEditDialog = (cert) => {
     setSelectedCert(cert);
+    const creditTypes = cert.credit_types || (cert.credit_type ? [cert.credit_type] : []);
     setEditData({
       title: cert.title || "",
       provider: cert.provider || "",
       credits: cert.credits?.toString() || "",
-      credit_type: cert.credit_type || "",
+      credit_types: creditTypes,
       subject: cert.subject || "",
       completion_date: cert.completion_date || "",
       expiration_date: cert.expiration_date || "",
@@ -200,6 +233,12 @@ const Certificates = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    
+    if (editData.credit_types.length === 0) {
+      toast.error("Please select at least one credit type");
+      return;
+    }
+    
     setSaving(true);
     
     try {
@@ -220,12 +259,74 @@ const Certificates = () => {
     }
   };
 
+  const handleBulkImport = async () => {
+    if (!importData.trim()) {
+      toast.error("Please paste CSV data");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      // Parse CSV
+      const lines = importData.trim().split("\n");
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+      
+      const certificates = lines.slice(1).map(line => {
+        const values = line.split(",").map(v => v.trim());
+        const cert = {};
+        headers.forEach((header, idx) => {
+          if (header === "title") cert.title = values[idx];
+          else if (header === "provider") cert.provider = values[idx];
+          else if (header === "credits") cert.credits = values[idx];
+          else if (header === "credit_type" || header === "credit_types") cert.credit_types = values[idx];
+          else if (header === "completion_date" || header === "date") cert.completion_date = values[idx];
+          else if (header === "subject") cert.subject = values[idx];
+          else if (header === "certificate_number" || header === "certificate_#") cert.certificate_number = values[idx];
+        });
+        return cert;
+      }).filter(c => c.title);
+
+      const response = await api.post("/certificates/bulk-import", { certificates });
+      
+      toast.success(`Imported ${response.data.imported_count} certificates`);
+      if (response.data.error_count > 0) {
+        toast.warning(`${response.data.error_count} rows had errors`);
+      }
+      
+      setShowImportDialog(false);
+      setImportData("");
+      fetchData();
+    } catch (error) {
+      toast.error("Failed to import certificates");
+      console.error("Import error:", error);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleCreateCustomType = async () => {
+    if (!newCustomType.name.trim()) {
+      toast.error("Please enter a name");
+      return;
+    }
+
+    try {
+      await api.post("/cme-types/custom", newCustomType);
+      toast.success("Custom credit type created!");
+      setShowCustomTypeDialog(false);
+      setNewCustomType({ name: "", description: "" });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to create custom type");
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
       provider: "",
       credits: "",
-      credit_type: "",
+      credit_types: [],
       subject: "",
       completion_date: "",
       expiration_date: "",
@@ -254,7 +355,8 @@ const Certificates = () => {
   const filteredCerts = certificates.filter(cert => {
     const matchesSearch = cert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           cert.provider.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || cert.credit_type === filterType;
+    const certTypes = cert.credit_types || (cert.credit_type ? [cert.credit_type] : []);
+    const matchesType = filterType === "all" || certTypes.includes(filterType);
     const matchesYear = filterYear === "all" || (cert.completion_date && cert.completion_date.startsWith(filterYear));
     return matchesSearch && matchesType && matchesYear;
   });
@@ -282,14 +384,25 @@ const Certificates = () => {
               Manage your CME certificates and credits
             </p>
           </div>
-          <Button
-            onClick={() => setShowAddDialog(true)}
-            className="bg-indigo-600 hover:bg-indigo-700"
-            data-testid="add-certificate-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Certificate
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowImportDialog(true)}
+              variant="outline"
+              className="border-slate-200"
+              data-testid="import-csv-btn"
+            >
+              <UploadIcon className="w-4 h-4 mr-2" />
+              Import CSV
+            </Button>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              data-testid="add-certificate-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Certificate
+            </Button>
+          </div>
         </div>
 
         {/* Upload Zone */}
@@ -386,69 +499,83 @@ const Certificates = () => {
                       <TableHead className="data-table">Title</TableHead>
                       <TableHead className="data-table">Provider</TableHead>
                       <TableHead className="data-table">Credits</TableHead>
-                      <TableHead className="data-table">Type</TableHead>
+                      <TableHead className="data-table">Types</TableHead>
                       <TableHead className="data-table">Date</TableHead>
                       <TableHead className="data-table">Status</TableHead>
                       <TableHead className="data-table text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCerts.map((cert) => (
-                      <TableRow key={cert.certificate_id}>
-                        <TableCell className="font-medium max-w-[200px] truncate">
-                          {cert.title}
-                        </TableCell>
-                        <TableCell className="text-slate-600 max-w-[150px] truncate">
-                          {cert.provider}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
-                            {cert.credits}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {getCreditTypeName(cert.credit_type)}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {cert.completion_date}
-                        </TableCell>
-                        <TableCell>
-                          {cert.eeds_imported && (
-                            <Badge className="bg-sky-50 text-sky-700 mr-1">EEDS</Badge>
-                          )}
-                          {getOcrStatusBadge(cert.ocr_status)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => { setSelectedCert(cert); setShowViewDialog(true); }}
-                              data-testid={`view-cert-${cert.certificate_id}`}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(cert)}
-                              data-testid={`edit-cert-${cert.certificate_id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(cert.certificate_id)}
-                              className="text-red-600 hover:text-red-700"
-                              data-testid={`delete-cert-${cert.certificate_id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredCerts.map((cert) => {
+                      const creditTypes = cert.credit_types || (cert.credit_type ? [cert.credit_type] : []);
+                      return (
+                        <TableRow key={cert.certificate_id}>
+                          <TableCell className="font-medium max-w-[200px] truncate">
+                            {cert.title}
+                          </TableCell>
+                          <TableCell className="text-slate-600 max-w-[150px] truncate">
+                            {cert.provider}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                              {cert.credits}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {creditTypes.slice(0, 2).map((type, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {getCreditTypeName(type)}
+                                </Badge>
+                              ))}
+                              {creditTypes.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{creditTypes.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {cert.completion_date}
+                          </TableCell>
+                          <TableCell>
+                            {cert.eeds_imported && (
+                              <Badge className="bg-sky-50 text-sky-700 mr-1">EEDS</Badge>
+                            )}
+                            {getOcrStatusBadge(cert.ocr_status)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => { setSelectedCert(cert); setShowViewDialog(true); }}
+                                data-testid={`view-cert-${cert.certificate_id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(cert)}
+                                data-testid={`edit-cert-${cert.certificate_id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(cert.certificate_id)}
+                                className="text-red-600 hover:text-red-700"
+                                data-testid={`delete-cert-${cert.certificate_id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -458,7 +585,7 @@ const Certificates = () => {
 
         {/* Add Certificate Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-heading">Add Certificate</DialogTitle>
             </DialogHeader>
@@ -503,23 +630,37 @@ const Certificates = () => {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="credit_type">Credit Type *</Label>
-                  <Select
-                    value={formData.credit_type}
-                    onValueChange={(value) => setFormData({ ...formData, credit_type: value })}
-                    required
-                  >
-                    <SelectTrigger data-testid="cert-type-select">
-                      <SelectValue placeholder="Select credit type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cmeTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Credit Types * (select all that apply)</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCustomTypeDialog(true)}
+                      className="text-indigo-600 h-auto p-0"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Custom
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-lg">
+                    {cmeTypes.map((type) => (
+                      <div key={type.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`type-${type.id}`}
+                          checked={formData.credit_types.includes(type.id)}
+                          onCheckedChange={() => handleCreditTypeToggle(type.id)}
+                        />
+                        <label
+                          htmlFor={`type-${type.id}`}
+                          className="text-sm cursor-pointer flex items-center gap-1"
+                        >
                           {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          {type.is_custom && <Badge variant="outline" className="text-xs px-1">Custom</Badge>}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="subject">Subject</Label>
@@ -598,36 +739,18 @@ const Certificates = () => {
                     <p className="font-medium text-slate-900">{selectedCert.credits}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500 text-xs uppercase tracking-wider">Type</Label>
-                    <p className="font-medium text-slate-900">{getCreditTypeName(selectedCert.credit_type)}</p>
-                  </div>
-                  <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Completion Date</Label>
                     <p className="font-medium text-slate-900">{selectedCert.completion_date}</p>
                   </div>
-                  <div>
-                    <Label className="text-slate-500 text-xs uppercase tracking-wider">Certificate #</Label>
-                    <p className="font-medium text-slate-900">{selectedCert.certificate_number || "N/A"}</p>
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs uppercase tracking-wider">Credit Types</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {(selectedCert.credit_types || (selectedCert.credit_type ? [selectedCert.credit_type] : [])).map((type, idx) => (
+                      <Badge key={idx} variant="secondary">{getCreditTypeName(type)}</Badge>
+                    ))}
                   </div>
                 </div>
-                {selectedCert.ocr_status === "completed" && selectedCert.ocr_data && (
-                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                    <p className="text-sm text-emerald-700 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Information extracted automatically via OCR
-                    </p>
-                  </div>
-                )}
-                {(selectedCert.ocr_status === "failed" || selectedCert.ocr_status === "processing" || !selectedCert.ocr_status) && (
-                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                    <p className="text-sm text-amber-700 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      {selectedCert.ocr_status === "failed" 
-                        ? "OCR failed. Click Edit to enter details manually."
-                        : "Please verify and edit the certificate details if needed."}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
             <DialogFooter>
@@ -657,7 +780,6 @@ const Certificates = () => {
             </DialogHeader>
             {selectedCert && (
               <form onSubmit={handleEditSubmit} className="space-y-4">
-                {/* Show image preview if available */}
                 {selectedCert.image_url && (
                   <div className="rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
                     <img
@@ -668,19 +790,6 @@ const Certificates = () => {
                   </div>
                 )}
 
-                {(selectedCert.ocr_status === "failed" || selectedCert.ocr_status === "processing") && (
-                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                    <p className="text-sm text-amber-700 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>
-                        {selectedCert.ocr_status === "failed" 
-                          ? "OCR couldn't extract the certificate details. Please enter the information manually below."
-                          : "Please review and correct the extracted information as needed."}
-                      </span>
-                    </p>
-                  </div>
-                )}
-
                 <div className="grid gap-4">
                   <div>
                     <Label htmlFor="edit_title">Title *</Label>
@@ -688,7 +797,6 @@ const Certificates = () => {
                       id="edit_title"
                       value={editData.title}
                       onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                      placeholder="e.g., Annual CME Conference 2024"
                       required
                       data-testid="edit-cert-title-input"
                     />
@@ -700,7 +808,6 @@ const Certificates = () => {
                         id="edit_provider"
                         value={editData.provider}
                         onChange={(e) => setEditData({ ...editData, provider: e.target.value })}
-                        placeholder="e.g., ACCME"
                         required
                         data-testid="edit-cert-provider-input"
                       />
@@ -714,40 +821,27 @@ const Certificates = () => {
                         min="0"
                         value={editData.credits}
                         onChange={(e) => setEditData({ ...editData, credits: e.target.value })}
-                        placeholder="e.g., 1.5"
                         required
                         data-testid="edit-cert-credits-input"
                       />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="edit_credit_type">Credit Type *</Label>
-                    <Select
-                      value={editData.credit_type}
-                      onValueChange={(value) => setEditData({ ...editData, credit_type: value })}
-                      required
-                    >
-                      <SelectTrigger data-testid="edit-cert-type-select">
-                        <SelectValue placeholder="Select credit type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cmeTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
+                    <Label>Credit Types * (select all that apply)</Label>
+                    <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto p-2 border rounded-lg mt-1">
+                      {cmeTypes.map((type) => (
+                        <div key={type.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-type-${type.id}`}
+                            checked={editData.credit_types.includes(type.id)}
+                            onCheckedChange={() => handleCreditTypeToggle(type.id, true)}
+                          />
+                          <label htmlFor={`edit-type-${type.id}`} className="text-sm cursor-pointer">
                             {type.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_subject">Subject</Label>
-                    <Input
-                      id="edit_subject"
-                      value={editData.subject}
-                      onChange={(e) => setEditData({ ...editData, subject: e.target.value })}
-                      placeholder="e.g., Cardiology"
-                      data-testid="edit-cert-subject-input"
-                    />
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -767,7 +861,6 @@ const Certificates = () => {
                         id="edit_certificate_number"
                         value={editData.certificate_number}
                         onChange={(e) => setEditData({ ...editData, certificate_number: e.target.value })}
-                        placeholder="Optional"
                         data-testid="edit-cert-number-input"
                       />
                     </div>
@@ -798,6 +891,106 @@ const Certificates = () => {
                 </DialogFooter>
               </form>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Import CSV Dialog */}
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="font-heading">Import Certificates from CSV</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <p className="text-sm text-slate-600 mb-2">
+                  <strong>CSV Format:</strong> Include headers in the first row
+                </p>
+                <code className="text-xs bg-slate-100 p-2 rounded block overflow-x-auto">
+                  title,provider,credits,credit_types,completion_date,subject,certificate_number
+                </code>
+                <p className="text-xs text-slate-500 mt-2">
+                  For multiple credit types, separate with semicolons: "ama_cat1;moc"
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="csv_data">Paste CSV Data</Label>
+                <Textarea
+                  id="csv_data"
+                  value={importData}
+                  onChange={(e) => setImportData(e.target.value)}
+                  placeholder="title,provider,credits,credit_types,completion_date&#10;Annual Conference,ACCME,10,ama_cat1,2024-03-15"
+                  rows={8}
+                  className="font-mono text-sm"
+                  data-testid="csv-import-textarea"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkImport}
+                disabled={importLoading}
+                className="bg-indigo-600 hover:bg-indigo-700"
+                data-testid="import-csv-submit-btn"
+              >
+                {importLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <UploadIcon className="w-4 h-4 mr-2" />
+                    Import
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Custom Credit Type Dialog */}
+        <Dialog open={showCustomTypeDialog} onOpenChange={setShowCustomTypeDialog}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-heading">Create Custom Credit Type</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="custom_type_name">Name *</Label>
+                <Input
+                  id="custom_type_name"
+                  value={newCustomType.name}
+                  onChange={(e) => setNewCustomType({ ...newCustomType, name: e.target.value })}
+                  placeholder="e.g., Hospital Quality Improvement"
+                  data-testid="custom-type-name-input"
+                />
+              </div>
+              <div>
+                <Label htmlFor="custom_type_desc">Description</Label>
+                <Input
+                  id="custom_type_desc"
+                  value={newCustomType.description}
+                  onChange={(e) => setNewCustomType({ ...newCustomType, description: e.target.value })}
+                  placeholder="Optional description"
+                  data-testid="custom-type-desc-input"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCustomTypeDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateCustomType}
+                className="bg-indigo-600 hover:bg-indigo-700"
+                data-testid="create-custom-type-btn"
+              >
+                Create
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
