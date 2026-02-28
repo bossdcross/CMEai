@@ -1278,7 +1278,8 @@ JSON format:
             system_message=system_prompt
         ).with_model("openai", "gpt-4o")
         
-        image_content = ImageContent(image_base64=base64_content)
+        # Use the converted image (either original or PDF->PNG)
+        image_content = ImageContent(image_base64=image_base64)
         
         response = await chat.send_message(UserMessage(
             text="Extract all CME certificate information from this image. Return only the JSON object.",
