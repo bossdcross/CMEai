@@ -552,7 +552,7 @@ const Certificates = () => {
                             {cert.eeds_imported && (
                               <Badge className="bg-sky-50 text-sky-700 mr-1">EEDS</Badge>
                             )}
-                            {getOcrStatusBadge(cert.ocr_status)}
+                            {getOcrStatusBadge(cert.ocr_status, cert.ocr_error)}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
