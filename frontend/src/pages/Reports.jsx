@@ -307,7 +307,24 @@ const Reports = () => {
                     )}
                     Print / View HTML
                   </Button>
+                  <Button
+                    onClick={() => handleExport("pars")}
+                    disabled={exporting !== null}
+                    variant="outline"
+                    className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    data-testid="export-pars-btn"
+                  >
+                    {exporting === "pars" ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2"></div>
+                    ) : (
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    )}
+                    ACCME PARS Export
+                  </Button>
                 </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  PARS export generates an ACCME-compliant report for annual CME reporting requirements
+                </p>
               </CardContent>
             </Card>
 
