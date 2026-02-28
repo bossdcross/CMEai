@@ -103,8 +103,8 @@ const Requirements = () => {
       const data = {
         ...formData,
         credits_required: parseFloat(formData.credits_required),
-        start_year: formData.start_year ? parseInt(formData.start_year) : null,
-        end_year: formData.end_year ? parseInt(formData.end_year) : null
+        start_year: formData.start_year && formData.start_year !== "any" ? parseInt(formData.start_year) : null,
+        end_year: formData.end_year && formData.end_year !== "any" ? parseInt(formData.end_year) : null
       };
       
       await api.post("/requirements", data);
