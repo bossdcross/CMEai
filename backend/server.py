@@ -1203,6 +1203,53 @@ async def process_certificate_ocr(certificate_id: str, base64_content: str, mime
             ocr_error_message = "OCR service not configured. Please enter details manually."
             raise Exception("EMERGENT_LLM_KEY not configured")
         
+        # Handle PDF files by converting to image
+        image_base64 = base64_content
+        final_mime_type = mime_type
+        
+        if mime_type == "application/pdf":
+            try:
+                from pdf2image import convert_from_bytes
+                from PIL import Image
+                import io
+                
+                logger.info(f"Converting PDF to image for {certificate_id}")
+                
+                # Decode the base64 PDF content
+                pdf_bytes = base64.b64decode(base64_content)
+                
+                # Convert PDF to images (first page only for certificates)
+                images = convert_from_bytes(pdf_bytes, dpi=150, first_page=1, last_page=1)
+                
+                if images:
+                    # Convert the first page to PNG
+                    img_buffer = io.BytesIO()
+                    images[0].save(img_buffer, format='PNG', optimize=True)
+                    img_buffer.seek(0)
+                    
+                    # Re-encode as base64
+                    image_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+                    final_mime_type = "image/png"
+                    logger.info(f"PDF converted to PNG successfully for {certificate_id}")
+                else:
+                    ocr_error_message = "Failed to convert PDF to image. Please upload as PNG or JPEG."
+                    raise Exception("PDF conversion produced no images")
+                    
+            except ImportError as e:
+                logger.error(f"pdf2image not installed: {e}")
+                ocr_error_message = "PDF processing not available. Please upload as PNG or JPEG."
+                raise Exception("PDF processing library not available")
+            except Exception as e:
+                logger.error(f"PDF conversion error for {certificate_id}: {e}")
+                ocr_error_message = f"Failed to process PDF: {str(e)}. Please upload as PNG or JPEG."
+                raise
+        
+        # Validate image format for GPT-4o
+        supported_formats = ["image/png", "image/jpeg", "image/gif", "image/webp"]
+        if final_mime_type not in supported_formats:
+            ocr_error_message = f"Unsupported image format: {final_mime_type}. Please upload PNG, JPEG, GIF, or WebP."
+            raise Exception(f"Unsupported format: {final_mime_type}")
+        
         # Enhanced system prompt for better extraction
         system_prompt = """You are an expert at extracting information from medical CME (Continuing Medical Education) certificates. 
 
