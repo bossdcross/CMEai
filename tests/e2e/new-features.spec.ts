@@ -400,9 +400,11 @@ test.describe('Requirements Provider and Subject Filters', () => {
     await page.getByTestId('add-requirement-btn').click();
     await expect(page.getByRole('dialog')).toBeVisible();
     
-    // Type a custom provider and add it
-    await page.getByTestId('req-provider-input').fill('Custom Test Hospital');
-    await page.getByTestId('req-provider-input').press('Enter');
+    // Type a custom provider and add it by clicking the + button
+    const providerInput = page.getByTestId('req-provider-input');
+    await providerInput.fill('Custom Test Hospital');
+    // Click the + button next to the input to add it
+    await providerInput.locator('..').locator('button').click();
     
     // Should show the badge with the provider
     await expect(page.getByText('Custom Test Hospital')).toBeVisible();
@@ -415,9 +417,11 @@ test.describe('Requirements Provider and Subject Filters', () => {
     await page.getByTestId('add-requirement-btn').click();
     await expect(page.getByRole('dialog')).toBeVisible();
     
-    // Type a custom subject and add it
-    await page.getByTestId('req-subject-input').fill('Test Oncology');
-    await page.getByTestId('req-subject-input').press('Enter');
+    // Type a custom subject and add it by clicking the + button
+    const subjectInput = page.getByTestId('req-subject-input');
+    await subjectInput.fill('Test Oncology');
+    // Click the + button next to the input to add it
+    await subjectInput.locator('..').locator('button').click();
     
     // Should show the badge with the subject
     await expect(page.getByText('Test Oncology')).toBeVisible();
