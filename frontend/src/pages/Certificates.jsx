@@ -129,16 +129,24 @@ const Certificates = () => {
         headers: { "Content-Type": "multipart/form-data" }
       });
       
-      if (response.data.ocr_status === "completed") {
+      const ocrStatus = response.data.ocr_status;
+      const ocrError = response.data.ocr_error;
+      
+      if (ocrStatus === "completed") {
         toast.success("Certificate uploaded and processed!");
         setSelectedCert(response.data);
         setShowViewDialog(true);
-      } else if (response.data.ocr_status === "processing") {
+      } else if (ocrStatus === "partial") {
+        toast.info(ocrError || "Partial OCR extraction. Please review and complete the details.");
+        setSelectedCert(response.data);
+        openEditDialog(response.data);
+      } else if (ocrStatus === "processing") {
         toast.info("Certificate uploaded. Processing with OCR...");
         setSelectedCert(response.data);
         openEditDialog(response.data);
       } else {
-        toast.warning("Certificate uploaded but OCR failed. Please enter details manually.");
+        // Failed status
+        toast.warning(ocrError || "Certificate uploaded but OCR failed. Please enter details manually.");
         setSelectedCert(response.data);
         openEditDialog(response.data);
       }
