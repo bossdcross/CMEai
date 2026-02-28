@@ -145,7 +145,9 @@ const Requirements = () => {
         ...formData,
         credits_required: parseFloat(formData.credits_required),
         start_year: formData.start_year && formData.start_year !== "any" ? parseInt(formData.start_year) : null,
-        end_year: formData.end_year && formData.end_year !== "any" ? parseInt(formData.end_year) : null
+        end_year: formData.end_year && formData.end_year !== "any" ? parseInt(formData.end_year) : null,
+        providers: formData.providers,
+        subjects: formData.subjects
       };
       
       await api.post("/requirements", data);
@@ -165,6 +167,8 @@ const Requirements = () => {
       const data = {
         name: formData.name,
         credit_types: formData.credit_types,
+        providers: formData.providers,
+        subjects: formData.subjects,
         credits_required: parseFloat(formData.credits_required),
         start_year: formData.start_year && formData.start_year !== "any" ? parseInt(formData.start_year) : null,
         end_year: formData.end_year && formData.end_year !== "any" ? parseInt(formData.end_year) : null,
