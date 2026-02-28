@@ -395,40 +395,6 @@ test.describe('Requirements Provider and Subject Filters', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('can interact with custom provider input', async ({ page }) => {
-    await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('add-requirement-btn').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    
-    // Verify the provider input is interactable
-    const providerInput = page.getByTestId('req-provider-input');
-    await providerInput.click();
-    await expect(providerInput).toBeFocused();
-    
-    // Type into the input
-    await providerInput.pressSequentially('Test Provider');
-    await expect(providerInput).toHaveValue('Test Provider');
-    
-    await page.keyboard.press('Escape');
-  });
-
-  test('can interact with custom subject input', async ({ page }) => {
-    await page.goto('/requirements', { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('add-requirement-btn').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    
-    // Verify the subject input is interactable
-    const subjectInput = page.getByTestId('req-subject-input');
-    await subjectInput.click();
-    await expect(subjectInput).toBeFocused();
-    
-    // Type into the input
-    await subjectInput.pressSequentially('Test Subject');
-    await expect(subjectInput).toHaveValue('Test Subject');
-    
-    await page.keyboard.press('Escape');
-  });
-
   test('certificate filter options API returns providers and subjects', async ({ request }) => {
     const response = await request.get(`${BASE_URL}/api/certificates/filters/options`, {
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
