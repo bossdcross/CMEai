@@ -145,6 +145,162 @@ class CustomCreditType(BaseModel):
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# ============ NEW MODELS FOR EEDS PARITY ============
+
+# Self-Reported Credits (journal clubs, self-study, presentations, etc.)
+class SelfReportedCredit(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    credit_id: str = Field(default_factory=lambda: f"self_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    activity_type: str  # self_study, journal_club, presentation, teaching, manuscript, peer_review, other
+    title: str
+    description: Optional[str] = None
+    credits: float
+    credit_types: List[str] = []
+    completion_date: str
+    hours_spent: Optional[float] = None  # Time spent on activity
+    reference_url: Optional[str] = None  # Link to article, resource, etc.
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SelfReportedCreditCreate(BaseModel):
+    activity_type: str
+    title: str
+    description: Optional[str] = None
+    credits: float
+    credit_types: List[str] = []
+    completion_date: str
+    hours_spent: Optional[float] = None
+    reference_url: Optional[str] = None
+
+# CME Events/Calendar
+class CMEEvent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    provider: str
+    location: Optional[str] = None  # Physical location or "Virtual"
+    event_url: Optional[str] = None
+    start_date: str
+    end_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    credits_available: Optional[float] = None
+    credit_types: List[str] = []
+    registration_url: Optional[str] = None
+    cost: Optional[float] = None
+    is_registered: bool = False
+    is_attended: bool = False
+    passcode: Optional[str] = None  # 6-digit event passcode for sign-in
+    notes: Optional[str] = None
+    reminder_sent: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CMEEventCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    provider: str
+    location: Optional[str] = None
+    event_url: Optional[str] = None
+    start_date: str
+    end_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    credits_available: Optional[float] = None
+    credit_types: List[str] = []
+    registration_url: Optional[str] = None
+    cost: Optional[float] = None
+    notes: Optional[str] = None
+
+# Event Evaluations
+class Evaluation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    evaluation_id: str = Field(default_factory=lambda: f"eval_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    certificate_id: Optional[str] = None  # Link to certificate if from formal CME
+    event_id: Optional[str] = None  # Link to event
+    title: str  # Activity title
+    overall_rating: int  # 1-5 scale
+    content_quality: Optional[int] = None  # 1-5
+    speaker_effectiveness: Optional[int] = None  # 1-5
+    relevance_to_practice: Optional[int] = None  # 1-5
+    would_recommend: Optional[bool] = None
+    learning_objectives_met: Optional[bool] = None
+    comments: Optional[str] = None
+    improvement_suggestions: Optional[str] = None
+    practice_change_planned: Optional[str] = None  # What will you do differently?
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EvaluationCreate(BaseModel):
+    certificate_id: Optional[str] = None
+    event_id: Optional[str] = None
+    title: str
+    overall_rating: int
+    content_quality: Optional[int] = None
+    speaker_effectiveness: Optional[int] = None
+    relevance_to_practice: Optional[int] = None
+    would_recommend: Optional[bool] = None
+    learning_objectives_met: Optional[bool] = None
+    comments: Optional[str] = None
+    improvement_suggestions: Optional[str] = None
+    practice_change_planned: Optional[str] = None
+
+# Speaker Disclosures (for tracking COI)
+class SpeakerDisclosure(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    disclosure_id: str = Field(default_factory=lambda: f"disc_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    event_id: Optional[str] = None
+    certificate_id: Optional[str] = None
+    speaker_name: str
+    speaker_credentials: Optional[str] = None  # MD, PhD, etc.
+    has_conflicts: bool = False
+    disclosure_text: Optional[str] = None  # Full disclosure statement
+    financial_relationships: List[Dict[str, Any]] = []  # [{company, relationship_type, amount}]
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SpeakerDisclosureCreate(BaseModel):
+    event_id: Optional[str] = None
+    certificate_id: Optional[str] = None
+    speaker_name: str
+    speaker_credentials: Optional[str] = None
+    has_conflicts: bool = False
+    disclosure_text: Optional[str] = None
+    financial_relationships: List[Dict[str, Any]] = []
+
+# Course Materials (attachments)
+class CourseMaterial(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    material_id: str = Field(default_factory=lambda: f"mat_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    certificate_id: Optional[str] = None
+    event_id: Optional[str] = None
+    title: str
+    material_type: str  # handout, slides, video, article, other
+    file_url: Optional[str] = None  # Base64 or external URL
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Self-Reported Activity Types
+SELF_REPORTED_TYPES = [
+    {"id": "self_study", "name": "Self-Study", "description": "Independent learning from books, articles, online resources"},
+    {"id": "journal_club", "name": "Journal Club", "description": "Participation in journal club discussions"},
+    {"id": "presentation", "name": "Presentation/Lecture", "description": "Giving a presentation or lecture"},
+    {"id": "teaching", "name": "Teaching", "description": "Teaching medical students, residents, or peers"},
+    {"id": "manuscript", "name": "Manuscript Review/Writing", "description": "Reviewing or writing medical manuscripts"},
+    {"id": "peer_review", "name": "Peer Review", "description": "Peer review of articles or case presentations"},
+    {"id": "quality_improvement", "name": "Quality Improvement", "description": "QI projects and activities"},
+    {"id": "tumor_board", "name": "Tumor Board", "description": "Tumor board participation"},
+    {"id": "grand_rounds", "name": "Grand Rounds", "description": "Attending grand rounds presentations"},
+    {"id": "case_conference", "name": "Case Conference", "description": "Case discussion and review"},
+    {"id": "other", "name": "Other", "description": "Other educational activities"}
+]
+
 # CME Types by Profession
 CME_TYPES = {
     "physician": [
