@@ -26,10 +26,14 @@ Create an app that will store CME certificates and create/export CME transcripts
 
 ## What's Been Implemented
 
-### February 28, 2026
+### February 28, 2026 - Major Feature Update
+- [x] **Multiple Credit Types per Certificate**: Certificates can now have multiple credit types (e.g., AMA Cat 1 + MOC + Custom)
+- [x] **Custom Credit Types**: Users can create custom credit types for hospital/personal tracking
+- [x] **Year-Specific Requirements**: Goals can specify start/end year ranges for accurate tracking
+- [x] **Bulk CSV Import**: Import multiple certificates at once via CSV paste
+- [x] **Year-over-Year Comparison**: New Reports tab with bar/line charts comparing credits across years
 - [x] Added year filter to Certificates page (supports years back to 1990)
 - [x] Extended Reports page to support viewing transcripts from any past year (1990-present)
-- [x] No date restrictions on certificate entry - can add certificates from any past date
 
 ### February 26, 2026
 - [x] Added manual edit functionality for certificates (OCR failures can now be manually corrected)
