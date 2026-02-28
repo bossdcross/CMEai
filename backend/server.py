@@ -1639,24 +1639,25 @@ async def update_requirement_progress(user_id: str):
         await update_single_requirement_progress(user_id, req["requirement_id"])
 
 async def update_single_requirement_progress(user_id: str, requirement_id: str):
-    """Update progress for a single requirement with multi-criteria filtering"""
+    """Update progress for a single requirement with multi-criteria filtering (includes self-reported credits)"""
     req = await db.requirements.find_one({"requirement_id": requirement_id}, {"_id": 0})
     if not req:
         return
     
-    # Build aggregation pipeline for more complex filtering
-    match_conditions = [{"user_id": user_id}]
+    # Build base match conditions
+    base_match = [{"user_id": user_id}]
     
     # Handle year range filtering
     start_year = req.get("start_year")
     end_year = req.get("end_year")
     
+    year_conditions = []
     if start_year:
-        match_conditions.append({
+        year_conditions.append({
             "$expr": {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]}
         })
     if end_year:
-        match_conditions.append({
+        year_conditions.append({
             "$expr": {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
         })
     
@@ -1664,60 +1665,95 @@ async def update_single_requirement_progress(user_id: str, requirement_id: str):
     credit_types = req.get("credit_types", [])
     credit_type = req.get("credit_type")
     
+    credit_type_condition = None
     if credit_types:
-        match_conditions.append({
+        credit_type_condition = {
             "$or": [
                 {"credit_types": {"$in": credit_types}},
                 {"credit_type": {"$in": credit_types}}
             ]
-        })
+        }
     elif credit_type:
-        match_conditions.append({
+        credit_type_condition = {
             "$or": [
                 {"credit_types": credit_type},
                 {"credit_type": credit_type}
             ]
-        })
+        }
     
-    # Handle provider filtering (case-insensitive partial match)
+    # Handle provider filtering (case-insensitive partial match) - certificates only
     providers = req.get("providers", [])
+    provider_condition = None
     if providers:
         provider_conditions = []
         for provider in providers:
             provider_conditions.append({
                 "provider": {"$regex": provider, "$options": "i"}
             })
-        match_conditions.append({"$or": provider_conditions})
+        provider_condition = {"$or": provider_conditions}
     
-    # Handle subject filtering (case-insensitive partial match)
+    # Handle subject filtering (case-insensitive partial match) - certificates only
     subjects = req.get("subjects", [])
+    subject_condition = None
     if subjects:
         subject_conditions = []
         for subject in subjects:
             subject_conditions.append({
                 "subject": {"$regex": subject, "$options": "i"}
             })
-        match_conditions.append({"$or": subject_conditions})
+        subject_condition = {"$or": subject_conditions}
     
-    # Build final query
-    if len(match_conditions) == 1:
-        query = match_conditions[0]
-    else:
-        query = {"$and": match_conditions}
+    # Build certificate query
+    cert_match = base_match.copy()
+    cert_match.extend(year_conditions)
+    if credit_type_condition:
+        cert_match.append(credit_type_condition)
+    if provider_condition:
+        cert_match.append(provider_condition)
+    if subject_condition:
+        cert_match.append(subject_condition)
     
-    pipeline = [
-        {"$match": query},
-        {"$group": {"_id": None, "total_credits": {"$sum": "$credits"}, "cert_count": {"$sum": 1}}}
+    cert_query = {"$and": cert_match} if len(cert_match) > 1 else cert_match[0]
+    
+    cert_pipeline = [
+        {"$match": cert_query},
+        {"$group": {"_id": None, "total_credits": {"$sum": "$credits"}, "count": {"$sum": 1}}}
     ]
     
-    result = await db.certificates.aggregate(pipeline).to_list(1)
-    credits_earned = result[0]["total_credits"] if result else 0
-    matching_certs = result[0]["cert_count"] if result else 0
+    cert_result = await db.certificates.aggregate(cert_pipeline).to_list(1)
+    cert_credits = cert_result[0]["total_credits"] if cert_result else 0
+    cert_count = cert_result[0]["count"] if cert_result else 0
+    
+    # Build self-reported credits query (no provider/subject filtering - just year and credit type)
+    self_match = base_match.copy()
+    self_match.extend(year_conditions)
+    if credit_type_condition:
+        self_match.append(credit_type_condition)
+    
+    self_query = {"$and": self_match} if len(self_match) > 1 else self_match[0]
+    
+    self_pipeline = [
+        {"$match": self_query},
+        {"$group": {"_id": None, "total_credits": {"$sum": "$credits"}, "count": {"$sum": 1}}}
+    ]
+    
+    self_result = await db.self_reported_credits.aggregate(self_pipeline).to_list(1)
+    self_credits = self_result[0]["total_credits"] if self_result else 0
+    self_count = self_result[0]["count"] if self_result else 0
+    
+    # Total credits
+    total_credits = cert_credits + self_credits
+    total_count = cert_count + self_count
     
     await db.requirements.update_one(
         {"requirement_id": requirement_id},
         {"$set": {
-            "credits_earned": credits_earned,
+            "credits_earned": total_credits,
+            "matching_certificates": cert_count,
+            "matching_self_reported": self_count,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
             "matching_certificates": matching_certs,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
