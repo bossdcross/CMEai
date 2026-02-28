@@ -337,6 +337,20 @@ const Certificates = () => {
               data-testid="search-certificates"
             />
           </div>
+          <Select value={filterYear} onValueChange={setFilterYear}>
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="filter-year">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-full sm:w-[200px]" data-testid="filter-type">
               <Filter className="w-4 h-4 mr-2" />
