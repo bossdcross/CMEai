@@ -923,6 +923,104 @@ const Requirements = () => {
                 </div>
               </div>
               
+              {/* Provider Filter */}
+              <div>
+                <Label className="flex items-center gap-1">
+                  <Building2 className="w-4 h-4" /> Providers
+                </Label>
+                <div className="flex gap-2 mb-2 mt-1">
+                  <Select
+                    value={newProvider}
+                    onValueChange={(value) => value !== "select" && addProvider(value)}
+                  >
+                    <SelectTrigger className="flex-1" data-testid="edit-req-provider-select">
+                      <SelectValue placeholder="Select from existing..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="select">Select provider...</SelectItem>
+                      {filterOptions.providers.filter(p => !formData.providers.includes(p)).map((provider) => (
+                        <SelectItem key={provider} value={provider}>{provider}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Or type new..."
+                    value={newProvider}
+                    onChange={(e) => setNewProvider(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addProvider(newProvider))}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="icon" onClick={() => addProvider(newProvider)}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {formData.providers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 p-2 border rounded-lg bg-slate-50">
+                    {formData.providers.map((provider, idx) => (
+                      <Badge key={idx} variant="secondary" className="pr-1 bg-blue-50 text-blue-700">
+                        {provider}
+                        <button
+                          type="button"
+                          onClick={() => removeProvider(provider)}
+                          className="ml-1 hover:text-blue-900"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Subject Filter */}
+              <div>
+                <Label className="flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" /> Subjects
+                </Label>
+                <div className="flex gap-2 mb-2 mt-1">
+                  <Select
+                    value={newSubject}
+                    onValueChange={(value) => value !== "select" && addSubject(value)}
+                  >
+                    <SelectTrigger className="flex-1" data-testid="edit-req-subject-select">
+                      <SelectValue placeholder="Select from existing..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="select">Select subject...</SelectItem>
+                      {filterOptions.subjects.filter(s => !formData.subjects.includes(s)).map((subject) => (
+                        <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Or type new..."
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubject(newSubject))}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="icon" onClick={() => addSubject(newSubject)}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {formData.subjects.length > 0 && (
+                  <div className="flex flex-wrap gap-1 p-2 border rounded-lg bg-slate-50">
+                    {formData.subjects.map((subject, idx) => (
+                      <Badge key={idx} variant="secondary" className="pr-1 bg-purple-50 text-purple-700">
+                        {subject}
+                        <button
+                          type="button"
+                          onClick={() => removeSubject(subject)}
+                          className="ml-1 hover:text-purple-900"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
               <div>
                 <Label htmlFor="edit_notes">Notes</Label>
                 <Textarea
