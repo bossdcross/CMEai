@@ -32,13 +32,18 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  Trophy
+  Trophy,
+  Building2,
+  BookOpen,
+  X,
+  Filter
 } from "lucide-react";
 import { toast } from "sonner";
 
 const Requirements = () => {
   const [requirements, setRequirements] = useState([]);
   const [cmeTypes, setCmeTypes] = useState([]);
+  const [filterOptions, setFilterOptions] = useState({ providers: [], subjects: [] });
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -54,12 +59,18 @@ const Requirements = () => {
     name: "",
     requirement_type: "",
     credit_types: [],
+    providers: [],
+    subjects: [],
     credits_required: "",
     start_year: "",
     end_year: "",
     due_date: "",
     notes: ""
   });
+  
+  // For adding new providers/subjects
+  const [newProvider, setNewProvider] = useState("");
+  const [newSubject, setNewSubject] = useState("");
 
   const requirementTypes = [
     { id: "license_renewal", name: "License Renewal" },
@@ -74,12 +85,14 @@ const Requirements = () => {
 
   const fetchData = async () => {
     try {
-      const [reqsRes, typesRes] = await Promise.all([
+      const [reqsRes, typesRes, filtersRes] = await Promise.all([
         api.get("/requirements?active_only=false"),
-        api.get("/cme-types")
+        api.get("/cme-types"),
+        api.get("/certificates/filters/options")
       ]);
       setRequirements(reqsRes.data);
       setCmeTypes(typesRes.data);
+      setFilterOptions(filtersRes.data);
     } catch (error) {
       toast.error("Failed to load requirements");
     } finally {
@@ -93,6 +106,34 @@ const Requirements = () => {
       credit_types: prev.credit_types.includes(typeId)
         ? prev.credit_types.filter(t => t !== typeId)
         : [...prev.credit_types, typeId]
+    }));
+  };
+  
+  const addProvider = (provider) => {
+    if (provider && !formData.providers.includes(provider)) {
+      setFormData(prev => ({ ...prev, providers: [...prev.providers, provider] }));
+    }
+    setNewProvider("");
+  };
+  
+  const removeProvider = (provider) => {
+    setFormData(prev => ({
+      ...prev,
+      providers: prev.providers.filter(p => p !== provider)
+    }));
+  };
+  
+  const addSubject = (subject) => {
+    if (subject && !formData.subjects.includes(subject)) {
+      setFormData(prev => ({ ...prev, subjects: [...prev.subjects, subject] }));
+    }
+    setNewSubject("");
+  };
+  
+  const removeSubject = (subject) => {
+    setFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.filter(s => s !== subject)
     }));
   };
 
