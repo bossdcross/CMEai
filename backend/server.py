@@ -695,6 +695,361 @@ async def delete_custom_credit_type(credit_type_id: str, user: User = Depends(ge
         raise HTTPException(status_code=404, detail="Custom credit type not found")
     return {"message": "Custom credit type deleted"}
 
+# ============ SELF-REPORTED CREDITS ROUTES ============
+
+@api_router.get("/self-reported-types")
+async def get_self_reported_types():
+    """Get available self-reported activity types"""
+    return SELF_REPORTED_TYPES
+
+@api_router.get("/self-reported")
+async def get_self_reported_credits(
+    user: User = Depends(get_current_user),
+    year: Optional[int] = None
+):
+    """Get user's self-reported credits"""
+    query = {"user_id": user.user_id}
+    if year:
+        query["completion_date"] = {"$regex": f"^{year}"}
+    
+    credits = await db.self_reported_credits.find(query, {"_id": 0}).sort("completion_date", -1).to_list(500)
+    return credits
+
+@api_router.post("/self-reported")
+async def create_self_reported_credit(data: SelfReportedCreditCreate, user: User = Depends(get_current_user)):
+    """Create a self-reported credit entry"""
+    credit = SelfReportedCredit(user_id=user.user_id, **data.model_dump())
+    
+    credit_dict = credit.model_dump()
+    credit_dict["created_at"] = credit_dict["created_at"].isoformat()
+    credit_dict["updated_at"] = credit_dict["updated_at"].isoformat()
+    
+    await db.self_reported_credits.insert_one(credit_dict)
+    credit_dict.pop("_id", None)
+    
+    # Update requirement progress (self-reported credits count too)
+    await update_requirement_progress(user.user_id)
+    
+    return credit_dict
+
+@api_router.put("/self-reported/{credit_id}")
+async def update_self_reported_credit(credit_id: str, request: Request, user: User = Depends(get_current_user)):
+    """Update a self-reported credit"""
+    body = await request.json()
+    
+    result = await db.self_reported_credits.update_one(
+        {"credit_id": credit_id, "user_id": user.user_id},
+        {"$set": {**body, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Self-reported credit not found")
+    
+    await update_requirement_progress(user.user_id)
+    
+    credit = await db.self_reported_credits.find_one({"credit_id": credit_id}, {"_id": 0})
+    return credit
+
+@api_router.delete("/self-reported/{credit_id}")
+async def delete_self_reported_credit(credit_id: str, user: User = Depends(get_current_user)):
+    """Delete a self-reported credit"""
+    result = await db.self_reported_credits.delete_one(
+        {"credit_id": credit_id, "user_id": user.user_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Self-reported credit not found")
+    
+    await update_requirement_progress(user.user_id)
+    return {"message": "Self-reported credit deleted"}
+
+# ============ CME EVENTS/CALENDAR ROUTES ============
+
+@api_router.get("/events")
+async def get_events(
+    user: User = Depends(get_current_user),
+    upcoming: bool = False,
+    past: bool = False
+):
+    """Get user's CME events"""
+    query = {"user_id": user.user_id}
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    if upcoming:
+        query["start_date"] = {"$gte": today}
+    elif past:
+        query["start_date"] = {"$lt": today}
+    
+    events = await db.cme_events.find(query, {"_id": 0}).sort("start_date", 1).to_list(500)
+    return events
+
+@api_router.post("/events")
+async def create_event(data: CMEEventCreate, user: User = Depends(get_current_user)):
+    """Create a CME event"""
+    # Generate a 6-digit passcode for sign-in
+    import random
+    passcode = str(random.randint(100000, 999999))
+    
+    event = CMEEvent(user_id=user.user_id, passcode=passcode, **data.model_dump())
+    
+    event_dict = event.model_dump()
+    event_dict["created_at"] = event_dict["created_at"].isoformat()
+    event_dict["updated_at"] = event_dict["updated_at"].isoformat()
+    
+    await db.cme_events.insert_one(event_dict)
+    event_dict.pop("_id", None)
+    
+    return event_dict
+
+@api_router.get("/events/{event_id}")
+async def get_event(event_id: str, user: User = Depends(get_current_user)):
+    """Get a specific event"""
+    event = await db.cme_events.find_one(
+        {"event_id": event_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+@api_router.put("/events/{event_id}")
+async def update_event(event_id: str, request: Request, user: User = Depends(get_current_user)):
+    """Update an event"""
+    body = await request.json()
+    
+    result = await db.cme_events.update_one(
+        {"event_id": event_id, "user_id": user.user_id},
+        {"$set": {**body, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    event = await db.cme_events.find_one({"event_id": event_id}, {"_id": 0})
+    return event
+
+@api_router.delete("/events/{event_id}")
+async def delete_event(event_id: str, user: User = Depends(get_current_user)):
+    """Delete an event"""
+    result = await db.cme_events.delete_one(
+        {"event_id": event_id, "user_id": user.user_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {"message": "Event deleted"}
+
+@api_router.post("/events/{event_id}/register")
+async def toggle_event_registration(event_id: str, user: User = Depends(get_current_user)):
+    """Toggle event registration status"""
+    event = await db.cme_events.find_one({"event_id": event_id, "user_id": user.user_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    new_status = not event.get("is_registered", False)
+    await db.cme_events.update_one(
+        {"event_id": event_id},
+        {"$set": {"is_registered": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"is_registered": new_status}
+
+@api_router.post("/events/{event_id}/attend")
+async def mark_event_attended(event_id: str, request: Request, user: User = Depends(get_current_user)):
+    """Mark event as attended (with optional passcode verification)"""
+    body = await request.json()
+    passcode = body.get("passcode")
+    
+    event = await db.cme_events.find_one({"event_id": event_id, "user_id": user.user_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # If event has a passcode, verify it
+    if event.get("passcode") and passcode:
+        if event["passcode"] != passcode:
+            raise HTTPException(status_code=400, detail="Invalid passcode")
+    
+    await db.cme_events.update_one(
+        {"event_id": event_id},
+        {"$set": {"is_attended": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Event marked as attended", "is_attended": True}
+
+@api_router.post("/events/sign-in")
+async def sign_in_to_event(request: Request, user: User = Depends(get_current_user)):
+    """Sign in to an event using passcode"""
+    body = await request.json()
+    passcode = body.get("passcode", "").strip()
+    
+    if not passcode or len(passcode) != 6:
+        raise HTTPException(status_code=400, detail="Please enter a valid 6-digit passcode")
+    
+    # Find event with this passcode
+    event = await db.cme_events.find_one(
+        {"user_id": user.user_id, "passcode": passcode},
+        {"_id": 0}
+    )
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="No event found with this passcode")
+    
+    # Mark as attended
+    await db.cme_events.update_one(
+        {"event_id": event["event_id"]},
+        {"$set": {"is_attended": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": f"Successfully signed in to: {event['title']}", "event": event}
+
+# ============ EVALUATIONS ROUTES ============
+
+@api_router.get("/evaluations")
+async def get_evaluations(user: User = Depends(get_current_user)):
+    """Get user's evaluations"""
+    evaluations = await db.evaluations.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return evaluations
+
+@api_router.post("/evaluations")
+async def create_evaluation(data: EvaluationCreate, user: User = Depends(get_current_user)):
+    """Create an evaluation"""
+    evaluation = Evaluation(user_id=user.user_id, **data.model_dump())
+    
+    eval_dict = evaluation.model_dump()
+    eval_dict["created_at"] = eval_dict["created_at"].isoformat()
+    
+    await db.evaluations.insert_one(eval_dict)
+    eval_dict.pop("_id", None)
+    
+    return eval_dict
+
+@api_router.get("/evaluations/{evaluation_id}")
+async def get_evaluation(evaluation_id: str, user: User = Depends(get_current_user)):
+    """Get a specific evaluation"""
+    evaluation = await db.evaluations.find_one(
+        {"evaluation_id": evaluation_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    return evaluation
+
+@api_router.delete("/evaluations/{evaluation_id}")
+async def delete_evaluation(evaluation_id: str, user: User = Depends(get_current_user)):
+    """Delete an evaluation"""
+    result = await db.evaluations.delete_one(
+        {"evaluation_id": evaluation_id, "user_id": user.user_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    
+    return {"message": "Evaluation deleted"}
+
+# ============ SPEAKER DISCLOSURES ROUTES ============
+
+@api_router.get("/disclosures")
+async def get_disclosures(user: User = Depends(get_current_user)):
+    """Get speaker disclosures"""
+    disclosures = await db.speaker_disclosures.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return disclosures
+
+@api_router.post("/disclosures")
+async def create_disclosure(data: SpeakerDisclosureCreate, user: User = Depends(get_current_user)):
+    """Create a speaker disclosure"""
+    disclosure = SpeakerDisclosure(user_id=user.user_id, **data.model_dump())
+    
+    disc_dict = disclosure.model_dump()
+    disc_dict["created_at"] = disc_dict["created_at"].isoformat()
+    
+    await db.speaker_disclosures.insert_one(disc_dict)
+    disc_dict.pop("_id", None)
+    
+    return disc_dict
+
+@api_router.delete("/disclosures/{disclosure_id}")
+async def delete_disclosure(disclosure_id: str, user: User = Depends(get_current_user)):
+    """Delete a speaker disclosure"""
+    result = await db.speaker_disclosures.delete_one(
+        {"disclosure_id": disclosure_id, "user_id": user.user_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Disclosure not found")
+    
+    return {"message": "Disclosure deleted"}
+
+# ============ COURSE MATERIALS ROUTES ============
+
+@api_router.get("/materials")
+async def get_materials(
+    user: User = Depends(get_current_user),
+    certificate_id: Optional[str] = None,
+    event_id: Optional[str] = None
+):
+    """Get course materials"""
+    query = {"user_id": user.user_id}
+    if certificate_id:
+        query["certificate_id"] = certificate_id
+    if event_id:
+        query["event_id"] = event_id
+    
+    materials = await db.course_materials.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return materials
+
+@api_router.post("/materials")
+async def upload_material(
+    certificate_id: Optional[str] = None,
+    event_id: Optional[str] = None,
+    title: str = "",
+    material_type: str = "other",
+    notes: str = "",
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user)
+):
+    """Upload a course material"""
+    content = await file.read()
+    base64_content = base64.b64encode(content).decode('utf-8')
+    
+    material = CourseMaterial(
+        user_id=user.user_id,
+        certificate_id=certificate_id,
+        event_id=event_id,
+        title=title or file.filename,
+        material_type=material_type,
+        file_url=f"data:{file.content_type};base64,{base64_content}",
+        file_name=file.filename,
+        file_size=len(content),
+        notes=notes
+    )
+    
+    mat_dict = material.model_dump()
+    mat_dict["created_at"] = mat_dict["created_at"].isoformat()
+    
+    await db.course_materials.insert_one(mat_dict)
+    mat_dict.pop("_id", None)
+    
+    return mat_dict
+
+@api_router.delete("/materials/{material_id}")
+async def delete_material(material_id: str, user: User = Depends(get_current_user)):
+    """Delete a course material"""
+    result = await db.course_materials.delete_one(
+        {"material_id": material_id, "user_id": user.user_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    return {"message": "Material deleted"}
+
 # ============ CERTIFICATE ROUTES ============
 
 @api_router.get("/certificates")
