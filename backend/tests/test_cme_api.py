@@ -577,3 +577,193 @@ class TestExports:
         """Export endpoints require auth"""
         r = unauth_client.get(f"{BASE_URL}/api/reports/export/pdf")
         assert r.status_code == 401
+
+
+# ============ CERTIFICATE FILTER OPTIONS TESTS ============
+
+class TestCertificateFilterOptions:
+    def test_get_filter_options(self, api_client):
+        """GET /api/certificates/filters/options returns providers and subjects"""
+        r = api_client.get(f"{BASE_URL}/api/certificates/filters/options")
+        assert r.status_code == 200
+        data = r.json()
+        assert "providers" in data
+        assert "subjects" in data
+        assert isinstance(data["providers"], list)
+        assert isinstance(data["subjects"], list)
+
+    def test_filter_options_unauthorized(self, unauth_client):
+        """GET /api/certificates/filters/options requires auth"""
+        r = unauth_client.get(f"{BASE_URL}/api/certificates/filters/options")
+        assert r.status_code == 401
+
+
+# ============ REQUIREMENTS WITH PROVIDER/SUBJECT FILTER TESTS ============
+
+class TestRequirementsWithFilters:
+    created_req_id = None
+    created_cert_id = None
+
+    def test_create_cert_for_filter_test(self, api_client):
+        """Create certificate with provider and subject for filter testing"""
+        ts = int(time.time())
+        payload = {
+            "title": f"TEST_FilterTest_{ts}",
+            "provider": "TEST_Mayo_Clinic",
+            "credits": 5.0,
+            "credit_types": ["ama_cat1"],
+            "subject": "Cardiology",
+            "completion_date": "2025-03-15"
+        }
+        r = api_client.post(f"{BASE_URL}/api/certificates", json=payload)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["provider"] == "TEST_Mayo_Clinic"
+        assert data["subject"] == "Cardiology"
+        TestRequirementsWithFilters.created_cert_id = data["certificate_id"]
+
+    def test_create_requirement_with_provider_filter(self, api_client):
+        """POST /api/requirements with provider filter"""
+        ts = int(time.time())
+        payload = {
+            "name": f"TEST_Provider_Filter_{ts}",
+            "requirement_type": "hospital",
+            "credit_types": ["ama_cat1"],
+            "providers": ["TEST_Mayo_Clinic"],
+            "credits_required": 10.0,
+            "due_date": "2026-12-31"
+        }
+        r = api_client.post(f"{BASE_URL}/api/requirements", json=payload)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["providers"] == ["TEST_Mayo_Clinic"]
+        assert "requirement_id" in data
+        TestRequirementsWithFilters.created_req_id = data["requirement_id"]
+
+    def test_requirement_progress_with_provider_filter(self, api_client):
+        """Verify progress calculation respects provider filter"""
+        if not TestRequirementsWithFilters.created_req_id:
+            pytest.skip("No requirement created")
+        r = api_client.get(f"{BASE_URL}/api/requirements/{TestRequirementsWithFilters.created_req_id}")
+        assert r.status_code == 200
+        data = r.json()
+        # Should have credits from matching certificate
+        assert data["credits_earned"] >= 5.0
+
+    def test_update_requirement_with_subject_filter(self, api_client):
+        """PUT /api/requirements/{id} can add subject filter"""
+        if not TestRequirementsWithFilters.created_req_id:
+            pytest.skip("No requirement created")
+        r = api_client.put(
+            f"{BASE_URL}/api/requirements/{TestRequirementsWithFilters.created_req_id}",
+            json={"subjects": ["Cardiology"]}
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["subjects"] == ["Cardiology"]
+
+    def test_get_requirement_has_matching_certificates(self, api_client):
+        """Requirement shows matching certificate count"""
+        if not TestRequirementsWithFilters.created_req_id:
+            pytest.skip("No requirement created")
+        r = api_client.get(f"{BASE_URL}/api/requirements/{TestRequirementsWithFilters.created_req_id}")
+        assert r.status_code == 200
+        data = r.json()
+        # matching_certificates field should exist after progress calculation
+        assert "matching_certificates" in data
+
+    def test_cleanup_filter_requirement(self, api_client):
+        """Cleanup test requirement"""
+        if TestRequirementsWithFilters.created_req_id:
+            api_client.delete(f"{BASE_URL}/api/requirements/{TestRequirementsWithFilters.created_req_id}")
+            TestRequirementsWithFilters.created_req_id = None
+
+    def test_cleanup_filter_certificate(self, api_client):
+        """Cleanup test certificate"""
+        if TestRequirementsWithFilters.created_cert_id:
+            api_client.delete(f"{BASE_URL}/api/certificates/{TestRequirementsWithFilters.created_cert_id}")
+            TestRequirementsWithFilters.created_cert_id = None
+
+
+class TestRequirementsCombinationFilters:
+    """Test requirements with multiple filter criteria"""
+    created_req_id = None
+    created_cert_ids = []
+
+    def test_create_matching_certificate(self, api_client):
+        """Create certificate matching all filter criteria"""
+        ts = int(time.time())
+        payload = {
+            "title": f"TEST_Combo_Match_{ts}",
+            "provider": "TEST_Cleveland_Clinic",
+            "credits": 3.0,
+            "credit_types": ["ama_cat1", "moc"],
+            "subject": "Neurology",
+            "completion_date": "2025-06-15"
+        }
+        r = api_client.post(f"{BASE_URL}/api/certificates", json=payload)
+        assert r.status_code == 200
+        TestRequirementsCombinationFilters.created_cert_ids.append(r.json()["certificate_id"])
+
+    def test_create_non_matching_certificate(self, api_client):
+        """Create certificate NOT matching filter criteria"""
+        ts = int(time.time())
+        payload = {
+            "title": f"TEST_Combo_NoMatch_{ts}",
+            "provider": "TEST_Different_Hospital",
+            "credits": 10.0,
+            "credit_types": ["ama_cat1"],
+            "subject": "Oncology",
+            "completion_date": "2025-07-20"
+        }
+        r = api_client.post(f"{BASE_URL}/api/certificates", json=payload)
+        assert r.status_code == 200
+        TestRequirementsCombinationFilters.created_cert_ids.append(r.json()["certificate_id"])
+
+    def test_create_requirement_with_combo_filters(self, api_client):
+        """Create requirement with credit type + provider + subject + year filters"""
+        ts = int(time.time())
+        payload = {
+            "name": f"TEST_Combo_Req_{ts}",
+            "requirement_type": "board_recert",
+            "credit_types": ["ama_cat1"],
+            "providers": ["TEST_Cleveland_Clinic"],
+            "subjects": ["Neurology"],
+            "start_year": 2025,
+            "end_year": 2026,
+            "credits_required": 20.0,
+            "due_date": "2026-12-31"
+        }
+        r = api_client.post(f"{BASE_URL}/api/requirements", json=payload)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["credit_types"] == ["ama_cat1"]
+        assert data["providers"] == ["TEST_Cleveland_Clinic"]
+        assert data["subjects"] == ["Neurology"]
+        assert data["start_year"] == 2025
+        assert data["end_year"] == 2026
+        TestRequirementsCombinationFilters.created_req_id = data["requirement_id"]
+
+    def test_combo_filter_counts_only_matching(self, api_client):
+        """Progress only includes certificates matching ALL criteria"""
+        if not TestRequirementsCombinationFilters.created_req_id:
+            pytest.skip("No requirement created")
+        r = api_client.get(f"{BASE_URL}/api/requirements/{TestRequirementsCombinationFilters.created_req_id}")
+        assert r.status_code == 200
+        data = r.json()
+        # Should only count 3 credits (matching cert), not 10+3=13
+        assert data["credits_earned"] == 3.0
+        assert data["matching_certificates"] == 1
+
+    def test_cleanup_combo_requirement(self, api_client):
+        """Cleanup combo requirement"""
+        if TestRequirementsCombinationFilters.created_req_id:
+            api_client.delete(f"{BASE_URL}/api/requirements/{TestRequirementsCombinationFilters.created_req_id}")
+            TestRequirementsCombinationFilters.created_req_id = None
+
+    def test_cleanup_combo_certificates(self, api_client):
+        """Cleanup combo certificates"""
+        for cert_id in TestRequirementsCombinationFilters.created_cert_ids:
+            api_client.delete(f"{BASE_URL}/api/certificates/{cert_id}")
+        TestRequirementsCombinationFilters.created_cert_ids = []
+
