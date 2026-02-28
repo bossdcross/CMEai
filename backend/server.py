@@ -796,11 +796,16 @@ async def import_eeds_certificate(request: Request, user: User = Depends(get_cur
     
     # Parse EEDS QR code data (format varies, this is a basic implementation)
     # EEDS typically encodes certificate info in the QR code
+    credit_types = body.get("credit_types", [])
+    if not credit_types and body.get("credit_type"):
+        credit_types = [body.get("credit_type")]
+    
     cert_data = {
         "title": body.get("title", "EEDS Certificate"),
         "provider": body.get("provider", "EEDS"),
         "credits": float(body.get("credits", 1)),
-        "credit_type": body.get("credit_type", "ama_cat1"),
+        "credit_types": credit_types,
+        "credit_type": credit_types[0] if credit_types else "ama_cat1",
         "completion_date": body.get("completion_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
         "certificate_number": body.get("certificate_number"),
         "subject": body.get("subject"),
@@ -819,6 +824,72 @@ async def import_eeds_certificate(request: Request, user: User = Depends(get_cur
     await update_requirement_progress(user.user_id)
     
     return cert_dict
+
+@api_router.post("/certificates/bulk-import")
+async def bulk_import_certificates(request: Request, user: User = Depends(get_current_user)):
+    """Bulk import certificates from CSV data"""
+    body = await request.json()
+    certificates_data = body.get("certificates", [])
+    
+    if not certificates_data:
+        raise HTTPException(status_code=400, detail="No certificates provided")
+    
+    imported = []
+    errors = []
+    
+    for idx, cert_data in enumerate(certificates_data):
+        try:
+            # Validate required fields
+            if not cert_data.get("title"):
+                errors.append({"row": idx + 1, "error": "Missing title"})
+                continue
+            if not cert_data.get("provider"):
+                errors.append({"row": idx + 1, "error": "Missing provider"})
+                continue
+            if not cert_data.get("completion_date"):
+                errors.append({"row": idx + 1, "error": "Missing completion date"})
+                continue
+            
+            # Handle credit types
+            credit_types = cert_data.get("credit_types", [])
+            if isinstance(credit_types, str):
+                credit_types = [t.strip() for t in credit_types.split(",") if t.strip()]
+            if not credit_types and cert_data.get("credit_type"):
+                credit_types = [cert_data.get("credit_type")]
+            
+            cert = Certificate(
+                user_id=user.user_id,
+                title=cert_data.get("title", ""),
+                provider=cert_data.get("provider", ""),
+                credits=float(cert_data.get("credits", 0)),
+                credit_types=credit_types,
+                credit_type=credit_types[0] if credit_types else "ama_cat1",
+                subject=cert_data.get("subject"),
+                completion_date=cert_data.get("completion_date"),
+                expiration_date=cert_data.get("expiration_date"),
+                certificate_number=cert_data.get("certificate_number")
+            )
+            
+            cert_dict = cert.model_dump()
+            cert_dict["created_at"] = cert_dict["created_at"].isoformat()
+            cert_dict["updated_at"] = cert_dict["updated_at"].isoformat()
+            
+            await db.certificates.insert_one(cert_dict)
+            cert_dict.pop("_id", None)
+            imported.append(cert_dict)
+            
+        except Exception as e:
+            errors.append({"row": idx + 1, "error": str(e)})
+    
+    # Update requirement progress
+    await update_requirement_progress(user.user_id)
+    
+    return {
+        "imported_count": len(imported),
+        "error_count": len(errors),
+        "imported": imported,
+        "errors": errors
+    }
 
 # ============ REQUIREMENTS ROUTES ============
 
