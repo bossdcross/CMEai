@@ -68,7 +68,8 @@ class Certificate(BaseModel):
     title: str
     provider: str
     credits: float
-    credit_type: str  # e.g., "ama_cat1", "aanp_contact", "ancc_contact"
+    credit_types: List[str] = []  # Multiple credit types e.g., ["ama_cat1", "moc"]
+    credit_type: Optional[str] = None  # Legacy field for backwards compatibility
     subject: Optional[str] = None
     completion_date: str
     expiration_date: Optional[str] = None
@@ -84,7 +85,8 @@ class CertificateCreate(BaseModel):
     title: str
     provider: str
     credits: float
-    credit_type: str
+    credit_types: List[str] = []  # Multiple credit types
+    credit_type: Optional[str] = None  # Legacy support
     subject: Optional[str] = None
     completion_date: str
     expiration_date: Optional[str] = None
@@ -96,9 +98,12 @@ class Requirement(BaseModel):
     user_id: str
     name: str
     requirement_type: str  # license_renewal, board_recert, hospital, personal
-    credit_type: Optional[str] = None  # specific credit type needed
+    credit_types: List[str] = []  # Multiple credit types that can satisfy this requirement
+    credit_type: Optional[str] = None  # Legacy field
     credits_required: float
     credits_earned: float = 0
+    start_year: Optional[int] = None  # Year range start
+    end_year: Optional[int] = None  # Year range end
     due_date: str
     notes: Optional[str] = None
     is_active: bool = True
@@ -108,17 +113,31 @@ class Requirement(BaseModel):
 class RequirementCreate(BaseModel):
     name: str
     requirement_type: str
+    credit_types: List[str] = []
     credit_type: Optional[str] = None
     credits_required: float
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
     due_date: str
     notes: Optional[str] = None
 
 class RequirementUpdate(BaseModel):
     name: Optional[str] = None
+    credit_types: Optional[List[str]] = None
     credits_required: Optional[float] = None
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
     due_date: Optional[str] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None
+
+class CustomCreditType(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    credit_type_id: str = Field(default_factory=lambda: f"custom_{uuid.uuid4().hex[:8]}")
+    user_id: str
+    name: str
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # CME Types by Profession
 CME_TYPES = {
