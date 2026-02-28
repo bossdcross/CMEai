@@ -986,12 +986,38 @@ async def update_single_requirement_progress(user_id: str, requirement_id: str):
     # Build query for matching certificates
     query = {"user_id": user_id}
     
-    # If specific credit type required
-    if req.get("credit_type"):
-        query["credit_type"] = req["credit_type"]
+    # Handle year range filtering
+    start_year = req.get("start_year")
+    end_year = req.get("end_year")
     
-    # Get certificates completed before due date
-    due_date = req["due_date"]
+    if start_year and end_year:
+        # Filter by year range
+        query["$expr"] = {
+            "$and": [
+                {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]},
+                {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
+            ]
+        }
+    elif start_year:
+        query["$expr"] = {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]}
+    elif end_year:
+        query["$expr"] = {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
+    
+    # Handle multiple credit types
+    credit_types = req.get("credit_types", [])
+    credit_type = req.get("credit_type")
+    
+    if credit_types:
+        # Match any of the specified credit types
+        query["$or"] = [
+            {"credit_types": {"$in": credit_types}},
+            {"credit_type": {"$in": credit_types}}
+        ]
+    elif credit_type:
+        query["$or"] = [
+            {"credit_types": credit_type},
+            {"credit_type": credit_type}
+        ]
     
     pipeline = [
         {"$match": query},
