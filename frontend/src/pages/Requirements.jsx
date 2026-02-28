@@ -702,28 +702,37 @@ const Requirements = () => {
                 <p className="text-xs text-slate-500 mb-2">Only count certificates from specific providers</p>
                 <div className="flex gap-2 mb-2">
                   <Select
-                    value={newProvider}
-                    onValueChange={(value) => value !== "select" && addProvider(value)}
+                    value=""
+                    onValueChange={(value) => value && addProvider(value)}
                   >
                     <SelectTrigger className="flex-1" data-testid="req-provider-select">
-                      <SelectValue placeholder="Select from existing..." />
+                      <SelectValue placeholder="Select existing..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="select">Select provider...</SelectItem>
                       {filterOptions.providers.filter(p => !formData.providers.includes(p)).map((provider) => (
                         <SelectItem key={provider} value={provider}>{provider}</SelectItem>
                       ))}
+                      {filterOptions.providers.filter(p => !formData.providers.includes(p)).length === 0 && (
+                        <SelectItem value="" disabled>No existing providers</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <Input
                     placeholder="Or type new..."
                     value={newProvider}
                     onChange={(e) => setNewProvider(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addProvider(newProvider))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (newProvider.trim()) {
+                          addProvider(newProvider.trim());
+                        }
+                      }
+                    }}
                     className="flex-1"
                     data-testid="req-provider-input"
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={() => addProvider(newProvider)}>
+                  <Button type="button" variant="outline" size="icon" onClick={() => newProvider.trim() && addProvider(newProvider.trim())}>
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
