@@ -347,14 +347,16 @@ const Certificates = () => {
     return type?.name || typeId;
   };
 
-  const getOcrStatusBadge = (status) => {
+  const getOcrStatusBadge = (status, errorMsg) => {
     switch (status) {
       case "completed":
         return <Badge className="bg-emerald-50 text-emerald-700"><CheckCircle className="w-3 h-3 mr-1" />Verified</Badge>;
+      case "partial":
+        return <Badge className="bg-amber-50 text-amber-700" title={errorMsg}><AlertCircle className="w-3 h-3 mr-1" />Review Needed</Badge>;
       case "processing":
         return <Badge className="bg-amber-50 text-amber-700"><Clock className="w-3 h-3 mr-1" />Processing</Badge>;
       case "failed":
-        return <Badge className="bg-red-50 text-red-700"><AlertCircle className="w-3 h-3 mr-1" />Needs Review</Badge>;
+        return <Badge className="bg-red-50 text-red-700" title={errorMsg}><AlertCircle className="w-3 h-3 mr-1" />Manual Entry</Badge>;
       default:
         return null;
     }
