@@ -162,8 +162,8 @@ const Requirements = () => {
       requirement_type: req.requirement_type,
       credit_types: creditTypes,
       credits_required: req.credits_required.toString(),
-      start_year: req.start_year?.toString() || "",
-      end_year: req.end_year?.toString() || "",
+      start_year: req.start_year?.toString() || "any",
+      end_year: req.end_year?.toString() || "any",
       due_date: req.due_date,
       notes: req.notes || "",
       is_active: req.is_active
