@@ -2,13 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '/app/tests/e2e',
-  outputDir: '/root/.emergent/automation_output/20260228_221204/test-results',
+  outputDir: '/root/.emergent/automation_output/20260228_221316/test-results',
   timeout: 60000,
   retries: 0,
   workers: 1,
   reporter: [
     ['line'],
-    ['json', { outputFile: '/root/.emergent/automation_output/20260228_221204/results.json' }],
+    ['json', { outputFile: '/root/.emergent/automation_output/20260228_221316/results.json' }],
   ],
   use: {
     baseURL: 'https://cme-progress-hub.preview.emergentagent.com',
