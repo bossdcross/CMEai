@@ -114,18 +114,39 @@ Create an app that will store CME certificates and create/export CME transcripts
 - `POST /api/certificates/upload` - Upload with OCR
 - `POST /api/certificates/eeds-import` - Import from EEDS QR
 - `POST /api/certificates/bulk-import` - Bulk CSV import
+- `GET /api/self-reported-types` - Get activity types (11 types)
+- `GET /api/self-reported` - List self-reported credits
+- `POST /api/self-reported` - Create self-reported credit
+- `PUT /api/self-reported/{id}` - Update self-reported credit
+- `DELETE /api/self-reported/{id}` - Delete self-reported credit
+- `GET /api/events` - List CME events (upcoming/past filter)
+- `POST /api/events` - Create event (generates passcode)
+- `PUT /api/events/{id}` - Update event
+- `DELETE /api/events/{id}` - Delete event
+- `POST /api/events/{id}/register` - Toggle registration
+- `POST /api/events/{id}/attend` - Mark attended
+- `POST /api/events/sign-in` - Sign in with passcode
+- `GET /api/evaluations` - List evaluations
+- `POST /api/evaluations` - Create evaluation
+- `DELETE /api/evaluations/{id}` - Delete evaluation
+- `GET /api/disclosures` - List speaker disclosures
+- `POST /api/disclosures` - Create disclosure
+- `DELETE /api/disclosures/{id}` - Delete disclosure
+- `GET /api/materials` - List course materials
+- `POST /api/materials` - Upload material
+- `DELETE /api/materials/{id}` - Delete material
 - `GET /api/requirements` - List requirements
-- `POST /api/requirements` - Create requirement (with year range)
+- `POST /api/requirements` - Create requirement (with year range, providers, subjects)
 - `PUT /api/requirements/{id}` - Update requirement
 - `DELETE /api/requirements/{id}` - Delete requirement
 - `GET /api/dashboard` - Get dashboard data
 - `GET /api/reports/summary` - Get report summary
 - `GET /api/reports/year-over-year` - Year comparison data
-- `GET /api/reports/export/{pdf|excel|html}` - Export transcript
+- `GET /api/reports/export/{pdf|excel|html|pars}` - Export transcript (PARS = ACCME format)
 
 ## Testing Status
-- **Backend Tests**: 68/68 passed (100%)
-- **Frontend Tests**: 55/55 passed (100%)
+- **Backend Tests**: 106/106 passed (100%)
+- **Frontend Tests**: 77/77 passed (100%)
 - **Test Session**: test_session_1772029888767
 
 ## Prioritized Backlog
@@ -135,22 +156,31 @@ Create an app that will store CME certificates and create/export CME transcripts
 - [x] Certificate CRUD operations
 - [x] Requirements tracking
 - [x] Dashboard overview
+- [x] Self-reported credits
+- [x] CME Events calendar
+- [x] Evaluations/feedback
 
 ### P1 (High Priority) - DONE
 - [x] Certificate OCR extraction (enhanced with better error handling)
 - [x] NPI validation
-- [x] Export functionality (PDF, Excel, HTML)
+- [x] Export functionality (PDF, Excel, HTML, PARS)
 - [x] EEDS QR scanner
 - [x] Multiple credit types per certificate
 - [x] Custom credit types
 - [x] Year-specific requirements
 - [x] Bulk CSV import
 - [x] Year-over-year comparison reports
+- [x] Event sign-in (passcode)
+- [x] ACCME PARS export
+- [x] Course materials storage
+- [x] Speaker disclosures
 
 ### P2 (Medium Priority) - TODO
 - [ ] Email reminders for upcoming deadlines
 - [ ] Certificate image viewer with zoom
 - [ ] Advanced analytics (monthly breakdown, provider stats)
+- [ ] Audience response system (polling during events)
+- [ ] Event registration payments integration
 
 ### P3 (Nice to Have) - TODO
 - [ ] Dark mode toggle
