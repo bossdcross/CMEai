@@ -1087,6 +1087,36 @@ async def delete_requirement(requirement_id: str, user: User = Depends(get_curre
     
     return {"message": "Requirement deleted"}
 
+
+@api_router.get("/certificates/filters/options")
+async def get_certificate_filter_options(user: User = Depends(get_current_user)):
+    """Get unique providers and subjects from user's certificates for autocomplete"""
+    # Get unique providers
+    providers_pipeline = [
+        {"$match": {"user_id": user.user_id}},
+        {"$group": {"_id": "$provider"}},
+        {"$match": {"_id": {"$ne": None, "$ne": ""}}},
+        {"$sort": {"_id": 1}}
+    ]
+    providers_result = await db.certificates.aggregate(providers_pipeline).to_list(100)
+    providers = [p["_id"] for p in providers_result if p["_id"]]
+    
+    # Get unique subjects
+    subjects_pipeline = [
+        {"$match": {"user_id": user.user_id}},
+        {"$group": {"_id": "$subject"}},
+        {"$match": {"_id": {"$ne": None, "$ne": ""}}},
+        {"$sort": {"_id": 1}}
+    ]
+    subjects_result = await db.certificates.aggregate(subjects_pipeline).to_list(100)
+    subjects = [s["_id"] for s in subjects_result if s["_id"]]
+    
+    return {
+        "providers": providers,
+        "subjects": subjects
+    }
+
+
 async def update_requirement_progress(user_id: str):
     """Update progress for all user requirements"""
     requirements = await db.requirements.find(
