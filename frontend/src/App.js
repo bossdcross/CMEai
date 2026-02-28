@@ -10,6 +10,9 @@ import Requirements from "./pages/Requirements";
 import Reports from "./pages/Reports";
 import QRScanner from "./pages/QRScanner";
 import Settings from "./pages/Settings";
+import SelfReported from "./pages/SelfReported";
+import Events from "./pages/Events";
+import Evaluations from "./pages/Evaluations";
 import "./App.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
