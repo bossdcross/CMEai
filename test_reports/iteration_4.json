@@ -1,0 +1,127 @@
+{
+  "summary": "Iteration 4 (generate mode): EEDS parity features tested. 2 bugs found. Backend: 105 passed (1 xfail for PARS bug). Frontend: 77 tests pass (2 expected failures for Evaluations dialog bug). New EEDS features (self-reported credits, events, evaluations, disclosures, materials) work correctly except for identified bugs.",
+  "mode": "generate",
+  "baseline_commit": "fb5cebc273c6fb03b5a50289b8508416f90d8958",
+  "head_commit": "b4e9e1b3d6a4e8308f2828e7943a18e5719fa41e",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/reports/export/pars",
+        "issue": "PARS export fails with KeyError: 'by_type'. Line 2095 in server.py uses summary['by_type'] but should use summary['by_credit_type']",
+        "priority": "HIGH",
+        "fix": "Change line 2095 from summary['by_type'] to summary['by_credit_type']"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Evaluations.jsx",
+        "issue": "Add Evaluation dialog crashes with runtime error: 'A <Select.Item /> must have a value prop that is not an empty string'",
+        "selector": "[data-testid='add-evaluation-btn']",
+        "priority": "CRITICAL",
+        "root_cause": "Lines 356 and 376 in Evaluations.jsx use <SelectItem value=\"\">None</SelectItem>. Radix/shadcn Select component doesn't allow empty string values.",
+        "fix": "Change <SelectItem value=\"\">None</SelectItem> to <SelectItem value=\"none\">None</SelectItem> on lines 356 and 376, and handle 'none' value in the submit handler"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 77,
+    "passed": 75,
+    "failed": 0,
+    "skipped": 0,
+    "expected_failures": 2,
+    "backend_tests": {
+      "total": 106,
+      "passed": 105,
+      "failed": 0,
+      "xfailed": 1
+    }
+  },
+  "specs_created": [
+    "/app/tests/e2e/eeds-features.spec.ts",
+    "/app/backend/tests/test_new_eeds_features.py"
+  ],
+  "specs_updated": [
+    "/app/tests/e2e/core-flows.spec.ts"
+  ],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/backend/tests/test_new_eeds_features.py",
+    "/app/backend/tests/test_cme_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/tests/e2e/eeds-features.spec.ts",
+    "/app/tests/e2e/core-flows.spec.ts",
+    "/app/tests/e2e/main-feature.spec.ts",
+    "/app/tests/e2e/golden-path.spec.ts",
+    "/app/tests/e2e/new-features.spec.ts"
+  ],
+  "action_items": [
+    "FIX (Backend): In server.py line 2095, change summary['by_type'] to summary['by_credit_type'] for PARS export",
+    "FIX (Frontend): In Evaluations.jsx lines 356 and 376, change <SelectItem value=\"\">None</SelectItem> to <SelectItem value=\"none\">None</SelectItem>",
+    "FIX (Frontend): Update Evaluations.jsx handleSubmit to convert 'none' value back to null/empty before API call"
+  ],
+  "updated_files": [
+    "/app/tests/e2e/eeds-features.spec.ts",
+    "/app/tests/e2e/core-flows.spec.ts",
+    "/app/backend/tests/test_new_eeds_features.py"
+  ],
+  "success_rate": {
+    "backend": "99% (105/106 - 1 xfail for known bug)",
+    "frontend": "97% (75/77 - 2 expected failures for known bug)"
+  },
+  "seed_data_creation": "Test data uses timestamps/UUIDs for isolation. No permanent seed data created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Session token test_session_1772029888767 valid. New EEDS tests in eeds-features.spec.ts and test_new_eeds_features.py. Two bugs documented: 1) PARS export KeyError, 2) Evaluations dialog crash. Navigation tests updated to remove QR Scanner (replaced by Self-Reported, Events, Evaluations links).",
+  "features_tested": {
+    "self_reported_credits_crud": "PASS - Create, read, update, delete work correctly",
+    "activity_types_api": "PASS - 11 activity types returned",
+    "cme_events_crud": "PASS - Create, read, update, delete work correctly",
+    "event_passcode_generation": "PASS - 6-digit passcodes generated on event creation",
+    "event_registration_toggle": "PASS - Register/unregister toggle works",
+    "event_attendance_marking": "PASS - Mark attended works",
+    "passcode_signin": "PASS - Sign in with passcode marks event attended",
+    "evaluations_crud_api": "PASS - Backend API works correctly",
+    "evaluations_dialog_frontend": "FAIL - Dialog crashes due to empty SelectItem value",
+    "speaker_disclosures_crud": "PASS - Create, read, delete work correctly",
+    "course_materials_crud": "PASS - List and delete work correctly",
+    "pars_export": "FAIL - Backend KeyError bug",
+    "navigation_new_pages": "PASS - Self-Reported, Events, Evaluations navigation works"
+  },
+  "new_tests_added": {
+    "backend": [
+      "TestSelfReportedTypes (3 tests)",
+      "TestSelfReportedCreditsCRUD (8 tests)",
+      "TestEventsCRUD (13 tests)",
+      "TestEvaluationsCRUD (6 tests)",
+      "TestDisclosuresCRUD (4 tests)",
+      "TestMaterialsCRUD (2 tests)",
+      "TestPARSExport (2 tests)"
+    ],
+    "frontend": [
+      "Navigation - New EEDS Pages (6 tests)",
+      "Self-Reported Credits Page (5 tests)",
+      "CME Events Page (6 tests)",
+      "CME Evaluations Page (4 tests)",
+      "PARS Export (2 tests)"
+    ]
+  },
+  "rca_of_issue": {
+    "pars_export_bug": {
+      "description": "PARS export endpoint returns 500 Internal Server Error",
+      "root_cause": "Line 2095 in server.py references summary['by_type'] but get_report_summary() returns summary['by_credit_type']",
+      "reproduction": "Call GET /api/reports/export/pars?year=2025 with valid auth",
+      "mitigation": "Change summary['by_type'] to summary['by_credit_type'] on line 2095"
+    },
+    "evaluations_dialog_bug": {
+      "description": "Add Evaluation dialog crashes with React runtime error",
+      "root_cause": "Radix/shadcn Select component doesn't allow empty string values for SelectItem. Lines 356 and 376 use <SelectItem value=\"\">None</SelectItem>",
+      "reproduction": "Navigate to /evaluations, click 'New Evaluation' button",
+      "mitigation": "Use non-empty placeholder value like 'none' and handle in submit logic"
+    }
+  }
+}
