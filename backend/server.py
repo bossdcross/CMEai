@@ -2053,6 +2053,121 @@ async def export_html(
     
     return Response(content=html, media_type="text/html")
 
+@api_router.get("/reports/export/pars")
+async def export_pars(
+    user: User = Depends(get_current_user),
+    year: Optional[int] = None
+):
+    """Export transcript in ACCME PARS format for annual reporting
+    
+    PARS (Program and Activity Reporting System) format includes:
+    - Activity details required for ACCME compliance reporting
+    - Credit types mapped to ACCME standards
+    - Provider information with ACCME numbers where available
+    """
+    summary = await get_report_summary(user, year)
+    
+    # Create PARS-compliant export workbook
+    wb = openpyxl.Workbook()
+    
+    # Summary Sheet
+    ws_summary = wb.active
+    ws_summary.title = "PARS Summary"
+    
+    # PARS Header Information
+    ws_summary['A1'] = "ACCME PARS Activity Report"
+    ws_summary['A1'].font = Font(bold=True, size=16)
+    ws_summary['A2'] = f"Reporting Year: {summary['year']}"
+    ws_summary['A3'] = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    ws_summary['A4'] = f"Physician Name: {user.name}"
+    ws_summary['A5'] = f"NPI Number: {user.npi_number or 'Not Provided'}"
+    
+    # Summary Statistics
+    ws_summary['A7'] = "Summary Statistics"
+    ws_summary['A7'].font = Font(bold=True)
+    ws_summary['A8'] = f"Total CME Activities: {summary['total_certificates']}"
+    ws_summary['A9'] = f"Total Credits: {summary['total_credits']}"
+    
+    # Credits by Type
+    ws_summary['A11'] = "Credits by ACCME Category"
+    ws_summary['A11'].font = Font(bold=True)
+    row = 12
+    for ctype, credits in summary['by_type'].items():
+        ws_summary.cell(row=row, column=1, value=ctype)
+        ws_summary.cell(row=row, column=2, value=credits)
+        row += 1
+    
+    # Activity Details Sheet
+    ws_activities = wb.create_sheet("PARS Activities")
+    
+    # PARS-required columns
+    pars_headers = [
+        "Activity ID",
+        "Activity Title",
+        "Activity Type",
+        "Provider/Joint Provider",
+        "ACCME Provider Number",
+        "Credit Type",
+        "Credits Claimed",
+        "Activity Date",
+        "Completion Date",
+        "Certificate Number",
+        "Subject/Topic",
+        "Delivery Format"
+    ]
+    
+    for col, header in enumerate(pars_headers, 1):
+        cell = ws_activities.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Activity data
+    for row, cert in enumerate(summary['certificates'], 2):
+        ws_activities.cell(row=row, column=1, value=cert.get('certificate_id', ''))
+        ws_activities.cell(row=row, column=2, value=cert.get('title', ''))
+        ws_activities.cell(row=row, column=3, value="Course")  # Default activity type
+        ws_activities.cell(row=row, column=4, value=cert.get('provider', ''))
+        ws_activities.cell(row=row, column=5, value=cert.get('accme_provider_number', ''))
+        
+        # Map credit types to ACCME categories
+        credit_type = cert.get('credit_type', '')
+        accme_credit = credit_type
+        if credit_type in ['ama_cat1', 'AMA PRA Category 1']:
+            accme_credit = 'AMA PRA Category 1 Credit(s)'
+        elif credit_type in ['ama_cat2', 'AMA PRA Category 2']:
+            accme_credit = 'AMA PRA Category 2 Credit(s)'
+        
+        ws_activities.cell(row=row, column=6, value=accme_credit)
+        ws_activities.cell(row=row, column=7, value=cert.get('credits', 0))
+        ws_activities.cell(row=row, column=8, value=cert.get('completion_date', ''))
+        ws_activities.cell(row=row, column=9, value=cert.get('completion_date', ''))
+        ws_activities.cell(row=row, column=10, value=cert.get('certificate_number', ''))
+        ws_activities.cell(row=row, column=11, value=cert.get('subject', ''))
+        ws_activities.cell(row=row, column=12, value='Live' if cert.get('location') else 'Enduring Material')
+    
+    # Adjust column widths
+    for ws in [ws_summary, ws_activities]:
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            ws.column_dimensions[column].width = min(max_length + 2, 50)
+    
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=accme_pars_report_{summary['year']}.xlsx"}
+    )
+
 # ============ DASHBOARD ROUTES ============
 
 @api_router.get("/dashboard")
