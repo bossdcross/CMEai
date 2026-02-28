@@ -1754,10 +1754,6 @@ async def update_single_requirement_progress(user_id: str, requirement_id: str):
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
-            "matching_certificates": matching_certs,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
 
 # ============ REPORTS ROUTES ============
 
