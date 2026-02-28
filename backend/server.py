@@ -100,6 +100,8 @@ class Requirement(BaseModel):
     requirement_type: str  # license_renewal, board_recert, hospital, personal
     credit_types: List[str] = []  # Multiple credit types that can satisfy this requirement
     credit_type: Optional[str] = None  # Legacy field
+    providers: List[str] = []  # Filter by specific providers (e.g., "ACCME", "Hospital XYZ")
+    subjects: List[str] = []  # Filter by specific subjects (e.g., "Cardiology", "Pain Management")
     credits_required: float
     credits_earned: float = 0
     start_year: Optional[int] = None  # Year range start
@@ -115,6 +117,8 @@ class RequirementCreate(BaseModel):
     requirement_type: str
     credit_types: List[str] = []
     credit_type: Optional[str] = None
+    providers: List[str] = []
+    subjects: List[str] = []
     credits_required: float
     start_year: Optional[int] = None
     end_year: Optional[int] = None
@@ -124,6 +128,8 @@ class RequirementCreate(BaseModel):
 class RequirementUpdate(BaseModel):
     name: Optional[str] = None
     credit_types: Optional[List[str]] = None
+    providers: Optional[List[str]] = None
+    subjects: Optional[List[str]] = None
     credits_required: Optional[float] = None
     start_year: Optional[int] = None
     end_year: Optional[int] = None
