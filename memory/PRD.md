@@ -26,6 +26,11 @@ Create an app that will store CME certificates and create/export CME transcripts
 
 ## What's Been Implemented
 
+### February 28, 2026 - OCR PDF Support Fix
+- [x] **PDF-to-Image Conversion**: OCR now automatically converts PDF certificates to PNG images before processing
+- [x] **Fixed GPT-4o format error**: PDFs were failing because GPT-4o only supports PNG, JPEG, GIF, WebP formats
+- [x] **Dependencies added**: pdf2image + poppler-utils for PDF rendering
+
 ### February 28, 2026 - EEDS Feature Parity (P0 + P1)
 - [x] **Self-Reported Credits**: Log journal clubs, self-study, presentations, teaching, manuscript review, tumor boards, grand rounds, case conferences (11 activity types)
 - [x] **CME Events Calendar**: Track upcoming conferences, courses, events with registration status and attendance tracking
