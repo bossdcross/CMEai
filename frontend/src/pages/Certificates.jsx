@@ -56,10 +56,16 @@ const Certificates = () => {
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
+  
+  // Generate years from current year back to 1990
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i);
+  
   const [formData, setFormData] = useState({
     title: "",
     provider: "",
