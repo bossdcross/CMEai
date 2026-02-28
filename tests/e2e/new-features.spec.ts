@@ -87,9 +87,10 @@ test.describe('Multiple Credit Types', () => {
     await page.getByTestId('cert-credits-input').fill('3.0');
     await page.getByTestId('cert-date-input').fill('2024-05-10');
 
-    // Select multiple credit types - click on the labels
-    await page.getByText('AMA PRA Category 1', { exact: true }).click();
-    await page.getByText('MOC/MOL').click();
+    // Select multiple credit types - use label within dialog to be specific
+    const dialog = page.getByLabel('Add Certificate');
+    await dialog.getByText('AMA PRA Category 1', { exact: true }).click();
+    await dialog.getByText('MOC/MOL').click();
     
     // Verify at least one credit type checkbox is in checked state (data-state="checked")
     // The shadcn Checkbox component uses data-state attribute
