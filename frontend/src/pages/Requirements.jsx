@@ -290,6 +290,23 @@ const Requirements = () => {
     }
     return "All Years";
   };
+  
+  const hasFilters = (req) => {
+    return (req.credit_types?.length > 0) || 
+           (req.providers?.length > 0) || 
+           (req.subjects?.length > 0) ||
+           req.start_year || 
+           req.end_year;
+  };
+  
+  const getFilterSummary = (req) => {
+    const parts = [];
+    if (req.credit_types?.length > 0) parts.push(`${req.credit_types.length} credit type(s)`);
+    if (req.providers?.length > 0) parts.push(`${req.providers.length} provider(s)`);
+    if (req.subjects?.length > 0) parts.push(`${req.subjects.length} subject(s)`);
+    if (req.start_year || req.end_year) parts.push(formatYearRange(req));
+    return parts.join(", ");
+  };
 
   if (loading) {
     return (
