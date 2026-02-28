@@ -26,6 +26,11 @@ Create an app that will store CME certificates and create/export CME transcripts
 
 ## What's Been Implemented
 
+### February 28, 2026
+- [x] Added year filter to Certificates page (supports years back to 1990)
+- [x] Extended Reports page to support viewing transcripts from any past year (1990-present)
+- [x] No date restrictions on certificate entry - can add certificates from any past date
+
 ### February 26, 2026
 - [x] Added manual edit functionality for certificates (OCR failures can now be manually corrected)
 - [x] Edit dialog shows certificate image preview alongside editable form
