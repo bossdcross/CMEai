@@ -1098,58 +1098,88 @@ async def update_requirement_progress(user_id: str):
         await update_single_requirement_progress(user_id, req["requirement_id"])
 
 async def update_single_requirement_progress(user_id: str, requirement_id: str):
-    """Update progress for a single requirement"""
+    """Update progress for a single requirement with multi-criteria filtering"""
     req = await db.requirements.find_one({"requirement_id": requirement_id}, {"_id": 0})
     if not req:
         return
     
-    # Build query for matching certificates
-    query = {"user_id": user_id}
+    # Build aggregation pipeline for more complex filtering
+    match_conditions = [{"user_id": user_id}]
     
     # Handle year range filtering
     start_year = req.get("start_year")
     end_year = req.get("end_year")
     
-    if start_year and end_year:
-        # Filter by year range
-        query["$expr"] = {
-            "$and": [
-                {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]},
-                {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
-            ]
-        }
-    elif start_year:
-        query["$expr"] = {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]}
-    elif end_year:
-        query["$expr"] = {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
+    if start_year:
+        match_conditions.append({
+            "$expr": {"$gte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, start_year]}
+        })
+    if end_year:
+        match_conditions.append({
+            "$expr": {"$lte": [{"$toInt": {"$substr": ["$completion_date", 0, 4]}}, end_year]}
+        })
     
-    # Handle multiple credit types
+    # Handle credit types filtering
     credit_types = req.get("credit_types", [])
     credit_type = req.get("credit_type")
     
     if credit_types:
-        # Match any of the specified credit types
-        query["$or"] = [
-            {"credit_types": {"$in": credit_types}},
-            {"credit_type": {"$in": credit_types}}
-        ]
+        match_conditions.append({
+            "$or": [
+                {"credit_types": {"$in": credit_types}},
+                {"credit_type": {"$in": credit_types}}
+            ]
+        })
     elif credit_type:
-        query["$or"] = [
-            {"credit_types": credit_type},
-            {"credit_type": credit_type}
-        ]
+        match_conditions.append({
+            "$or": [
+                {"credit_types": credit_type},
+                {"credit_type": credit_type}
+            ]
+        })
+    
+    # Handle provider filtering (case-insensitive partial match)
+    providers = req.get("providers", [])
+    if providers:
+        provider_conditions = []
+        for provider in providers:
+            provider_conditions.append({
+                "provider": {"$regex": provider, "$options": "i"}
+            })
+        match_conditions.append({"$or": provider_conditions})
+    
+    # Handle subject filtering (case-insensitive partial match)
+    subjects = req.get("subjects", [])
+    if subjects:
+        subject_conditions = []
+        for subject in subjects:
+            subject_conditions.append({
+                "subject": {"$regex": subject, "$options": "i"}
+            })
+        match_conditions.append({"$or": subject_conditions})
+    
+    # Build final query
+    if len(match_conditions) == 1:
+        query = match_conditions[0]
+    else:
+        query = {"$and": match_conditions}
     
     pipeline = [
         {"$match": query},
-        {"$group": {"_id": None, "total_credits": {"$sum": "$credits"}}}
+        {"$group": {"_id": None, "total_credits": {"$sum": "$credits"}, "cert_count": {"$sum": 1}}}
     ]
     
     result = await db.certificates.aggregate(pipeline).to_list(1)
     credits_earned = result[0]["total_credits"] if result else 0
+    matching_certs = result[0]["cert_count"] if result else 0
     
     await db.requirements.update_one(
         {"requirement_id": requirement_id},
-        {"$set": {"credits_earned": credits_earned, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "credits_earned": credits_earned,
+            "matching_certificates": matching_certs,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
     )
 
 # ============ REPORTS ROUTES ============
