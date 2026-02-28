@@ -97,7 +97,9 @@ const Reports = () => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `cme_transcript_${selectedYear}.${format === "pdf" ? "pdf" : "xlsx"}`;
+        const extensions = { pdf: "pdf", excel: "xlsx", pars: "xlsx" };
+        const names = { pdf: "cme_transcript", excel: "cme_transcript", pars: "accme_pars_report" };
+        link.download = `${names[format]}_${selectedYear}.${extensions[format]}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
