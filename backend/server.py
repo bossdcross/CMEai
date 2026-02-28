@@ -459,14 +459,79 @@ async def remove_npi(user: User = Depends(get_current_user)):
 
 @api_router.get("/cme-types")
 async def get_cme_types(user: User = Depends(get_current_user)):
-    """Get CME types for user's profession"""
+    """Get CME types for user's profession including custom types"""
     profession = user.profession or "physician"
-    return CME_TYPES.get(profession, CME_TYPES["physician"])
+    standard_types = CME_TYPES.get(profession, CME_TYPES["physician"])
+    
+    # Get user's custom credit types
+    custom_types = await db.custom_credit_types.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Convert custom types to same format
+    custom_formatted = [
+        {"id": ct["credit_type_id"], "name": ct["name"], "description": ct.get("description", "Custom credit type"), "is_custom": True}
+        for ct in custom_types
+    ]
+    
+    return standard_types + custom_formatted
 
 @api_router.get("/cme-types/all")
 async def get_all_cme_types():
     """Get all CME types"""
     return CME_TYPES
+
+@api_router.post("/cme-types/custom")
+async def create_custom_credit_type(request: Request, user: User = Depends(get_current_user)):
+    """Create a custom credit type"""
+    body = await request.json()
+    name = body.get("name", "").strip()
+    description = body.get("description", "")
+    
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    
+    # Check for duplicate name
+    existing = await db.custom_credit_types.find_one(
+        {"user_id": user.user_id, "name": {"$regex": f"^{name}$", "$options": "i"}},
+        {"_id": 0}
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="A custom credit type with this name already exists")
+    
+    custom_type = CustomCreditType(
+        user_id=user.user_id,
+        name=name,
+        description=description
+    )
+    
+    type_dict = custom_type.model_dump()
+    type_dict["created_at"] = type_dict["created_at"].isoformat()
+    
+    await db.custom_credit_types.insert_one(type_dict)
+    type_dict.pop("_id", None)
+    
+    return type_dict
+
+@api_router.get("/cme-types/custom")
+async def get_custom_credit_types(user: User = Depends(get_current_user)):
+    """Get user's custom credit types"""
+    custom_types = await db.custom_credit_types.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).to_list(100)
+    return custom_types
+
+@api_router.delete("/cme-types/custom/{credit_type_id}")
+async def delete_custom_credit_type(credit_type_id: str, user: User = Depends(get_current_user)):
+    """Delete a custom credit type"""
+    result = await db.custom_credit_types.delete_one(
+        {"credit_type_id": credit_type_id, "user_id": user.user_id}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Custom credit type not found")
+    return {"message": "Custom credit type deleted"}
 
 # ============ CERTIFICATE ROUTES ============
 
