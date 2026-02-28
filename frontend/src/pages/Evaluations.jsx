@@ -346,7 +346,7 @@ const Evaluations = () => {
               <div>
                 <Label>Link to Certificate (optional)</Label>
                 <Select
-                  value={formData.certificate_id}
+                  value={formData.certificate_id || "none"}
                   onValueChange={(value) => setFormData({ ...formData, certificate_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
