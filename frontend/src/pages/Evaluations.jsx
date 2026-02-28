@@ -347,13 +347,13 @@ const Evaluations = () => {
                 <Label>Link to Certificate (optional)</Label>
                 <Select
                   value={formData.certificate_id}
-                  onValueChange={(value) => setFormData({ ...formData, certificate_id: value })}
+                  onValueChange={(value) => setFormData({ ...formData, certificate_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a certificate..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {certificates.map((cert) => (
                       <SelectItem key={cert.certificate_id} value={cert.certificate_id}>
                         {cert.title} ({cert.completion_date})
@@ -366,14 +366,14 @@ const Evaluations = () => {
               <div>
                 <Label>Link to Event (optional)</Label>
                 <Select
-                  value={formData.event_id}
-                  onValueChange={(value) => setFormData({ ...formData, event_id: value })}
+                  value={formData.event_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, event_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select an event..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {events.map((event) => (
                       <SelectItem key={event.event_id} value={event.event_id}>
                         {event.title} ({event.start_date})
