@@ -200,6 +200,21 @@ function AppRouter() {
           <Settings />
         </ProtectedRoute>
       } />
+      <Route path="/self-reported" element={
+        <ProtectedRoute>
+          <SelfReported />
+        </ProtectedRoute>
+      } />
+      <Route path="/events" element={
+        <ProtectedRoute>
+          <Events />
+        </ProtectedRoute>
+      } />
+      <Route path="/evaluations" element={
+        <ProtectedRoute>
+          <Evaluations />
+        </ProtectedRoute>
+      } />
     </Routes>
   );
 }
