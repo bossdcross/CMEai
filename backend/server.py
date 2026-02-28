@@ -2092,9 +2092,9 @@ async def export_pars(
     ws_summary['A11'] = "Credits by ACCME Category"
     ws_summary['A11'].font = Font(bold=True)
     row = 12
-    for ctype, credits in summary['by_type'].items():
+    for ctype, credits in summary['by_credit_type'].items():
         ws_summary.cell(row=row, column=1, value=ctype)
-        ws_summary.cell(row=row, column=2, value=credits)
+        ws_summary.cell(row=row, column=2, value=credits.get('credits', 0) if isinstance(credits, dict) else credits)
         row += 1
     
     # Activity Details Sheet
