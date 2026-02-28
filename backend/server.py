@@ -545,21 +545,36 @@ async def get_certificates(
     query = {"user_id": user.user_id}
     
     if credit_type:
-        query["credit_type"] = credit_type
+        # Search in both credit_types array and legacy credit_type field
+        query["$or"] = [
+            {"credit_types": credit_type},
+            {"credit_type": credit_type}
+        ]
     
     if year:
         query["completion_date"] = {"$regex": f"^{year}"}
     
     certificates = await db.certificates.find(query, {"_id": 0}).sort("completion_date", -1).to_list(1000)
+    
+    # Normalize credit_types for backwards compatibility
+    for cert in certificates:
+        if not cert.get("credit_types") and cert.get("credit_type"):
+            cert["credit_types"] = [cert["credit_type"]]
+    
     return certificates
 
 @api_router.post("/certificates")
 async def create_certificate(cert_data: CertificateCreate, user: User = Depends(get_current_user)):
     """Create a new certificate"""
-    cert = Certificate(
-        user_id=user.user_id,
-        **cert_data.model_dump()
-    )
+    data = cert_data.model_dump()
+    
+    # Handle credit_types - ensure it's populated
+    if not data.get("credit_types") and data.get("credit_type"):
+        data["credit_types"] = [data["credit_type"]]
+    elif data.get("credit_types") and not data.get("credit_type"):
+        data["credit_type"] = data["credit_types"][0] if data["credit_types"] else None
+    
+    cert = Certificate(user_id=user.user_id, **data)
     
     cert_dict = cert.model_dump()
     cert_dict["created_at"] = cert_dict["created_at"].isoformat()
