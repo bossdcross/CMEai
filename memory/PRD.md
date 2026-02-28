@@ -103,8 +103,8 @@ Create an app that will store CME certificates and create/export CME transcripts
 - `GET /api/reports/export/{pdf|excel|html}` - Export transcript
 
 ## Testing Status
-- **Backend Tests**: 53/53 passed (100%)
-- **Frontend Tests**: 47/47 passed (100%)
+- **Backend Tests**: 68/68 passed (100%)
+- **Frontend Tests**: 55/55 passed (100%)
 - **Test Session**: test_session_1772029888767
 
 ## Prioritized Backlog
