@@ -55,9 +55,11 @@ test.describe('Navigation', () => {
   test('navigation bar shows all links', async ({ page }) => {
     await expect(page.getByRole('link', { name: /Dashboard/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Certificates/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Self-Reported/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Events/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Requirements/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Evaluations/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Reports/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /QR Scanner/ })).toBeVisible();
   });
 
   test('navigates to certificates page', async ({ page }) => {
@@ -73,10 +75,5 @@ test.describe('Navigation', () => {
   test('navigates to reports page', async ({ page }) => {
     await page.getByRole('link', { name: /Reports/ }).click();
     await expect(page).toHaveURL(/\/reports/);
-  });
-
-  test('navigates to QR scanner page', async ({ page }) => {
-    await page.getByRole('link', { name: /QR Scanner/ }).click();
-    await expect(page).toHaveURL(/\/scanner/);
   });
 });
