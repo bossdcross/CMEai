@@ -29,14 +29,14 @@ print('User ID: ' + userId);
 ## Step 2: Test Backend API
 ```bash
 # Test auth endpoint
-curl -X GET "https://cme-tracker.preview.emergentagent.com/api/auth/me" \
+curl -X GET "https://cme-progress-hub.preview.emergentagent.com/api/auth/me" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 
 # Test protected endpoints
-curl -X GET "https://cme-tracker.preview.emergentagent.com/api/certificates" \
+curl -X GET "https://cme-progress-hub.preview.emergentagent.com/api/certificates" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 
-curl -X POST "https://cme-tracker.preview.emergentagent.com/api/certificates" \
+curl -X POST "https://cme-progress-hub.preview.emergentagent.com/api/certificates" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
   -d '{"title": "Test Certificate", "provider": "Test Provider", "credits": 1.5, "credit_type": "ama_cat1", "completion_date": "2024-01-15"}'
@@ -54,7 +54,7 @@ await page.context.add_cookies([{
     "secure": true,
     "sameSite": "None"
 }]);
-await page.goto("https://cme-tracker.preview.emergentagent.com/dashboard");
+await page.goto("https://cme-progress-hub.preview.emergentagent.com/dashboard");
 ```
 
 ## Quick Debug

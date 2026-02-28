@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: '/root/.emergent/automation_output/20260225_144122/results.json' }],
   ],
   use: {
-    baseURL: 'https://cme-tracker.preview.emergentagent.com',
+    baseURL: 'https://cme-progress-hub.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 
-export const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-tracker.preview.emergentagent.com';
+export const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-progress-hub.preview.emergentagent.com';
 export const SESSION_TOKEN = process.env.TEST_SESSION_TOKEN || 'test_session_1772029888767';
 
 export async function waitForAppReady(page: Page) {

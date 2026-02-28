@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { setupAuthSession, dismissToasts } from '../fixtures/helpers';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-tracker.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-progress-hub.preview.emergentagent.com';
 const SESSION_TOKEN = process.env.TEST_SESSION_TOKEN || 'test_session_1772029888767';
 
 test.describe('Golden Path - CME Tracker Core Journey', () => {

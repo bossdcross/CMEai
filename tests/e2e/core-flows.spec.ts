@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { setupAuthSession, dismissToasts } from '../fixtures/helpers';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-tracker.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://cme-progress-hub.preview.emergentagent.com';
 
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ page }) => {
