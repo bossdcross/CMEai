@@ -762,28 +762,37 @@ const Requirements = () => {
                 <p className="text-xs text-slate-500 mb-2">Only count certificates on specific subjects/topics</p>
                 <div className="flex gap-2 mb-2">
                   <Select
-                    value={newSubject}
-                    onValueChange={(value) => value !== "select" && addSubject(value)}
+                    value=""
+                    onValueChange={(value) => value && addSubject(value)}
                   >
                     <SelectTrigger className="flex-1" data-testid="req-subject-select">
-                      <SelectValue placeholder="Select from existing..." />
+                      <SelectValue placeholder="Select existing..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="select">Select subject...</SelectItem>
                       {filterOptions.subjects.filter(s => !formData.subjects.includes(s)).map((subject) => (
                         <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                       ))}
+                      {filterOptions.subjects.filter(s => !formData.subjects.includes(s)).length === 0 && (
+                        <SelectItem value="" disabled>No existing subjects</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <Input
                     placeholder="Or type new..."
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubject(newSubject))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (newSubject.trim()) {
+                          addSubject(newSubject.trim());
+                        }
+                      }
+                    }}
                     className="flex-1"
                     data-testid="req-subject-input"
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={() => addSubject(newSubject)}>
+                  <Button type="button" variant="outline" size="icon" onClick={() => newSubject.trim() && addSubject(newSubject.trim())}>
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
