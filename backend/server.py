@@ -676,100 +676,200 @@ async def upload_certificate(
         return cert_dict
 
 async def process_certificate_ocr(certificate_id: str, base64_content: str, mime_type: str):
-    """Process certificate with GPT-4o vision"""
+    """Process certificate with GPT-4o vision - enhanced with better error handling and prompting"""
+    ocr_error_message = None
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
         
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
+            ocr_error_message = "OCR service not configured. Please enter details manually."
             raise Exception("EMERGENT_LLM_KEY not configured")
         
+        # Enhanced system prompt for better extraction
+        system_prompt = """You are an expert at extracting information from medical CME (Continuing Medical Education) certificates. 
+
+Analyze the certificate image carefully and extract ALL available information. CME certificates typically contain:
+- Activity/course title or name
+- Provider/sponsor organization (ACCME-accredited organizations, medical associations, hospitals)
+- Number of credits earned (look for numbers followed by "credits", "hours", "CME", "AMA PRA Category 1", etc.)
+- Credit type (AMA PRA Category 1, Category 2, AANP, AAPA, ANCC, MOC, etc.)
+- Completion date or date awarded
+- Certificate/reference number
+- Medical subject or specialty
+
+IMPORTANT INSTRUCTIONS:
+1. Return ONLY a valid JSON object - no explanation, no markdown
+2. Use null for any field you cannot determine with confidence
+3. For dates, use YYYY-MM-DD format (e.g., "2024-03-15")
+4. For credits, extract the numeric value only (e.g., 1.5, not "1.5 credits")
+5. For credit_type, use the exact wording from the certificate
+
+JSON format:
+{"title": "string or null", "provider": "string or null", "credits": number or null, "credit_type": "string or null", "completion_date": "YYYY-MM-DD or null", "certificate_number": "string or null", "subject": "string or null"}"""
+
         chat = LlmChat(
             api_key=api_key,
             session_id=f"ocr_{certificate_id}",
-            system_message="""You are a CME certificate data extractor. Extract the following information from the certificate image:
-- title: The name/title of the CME activity
-- provider: The organization that provided the CME
-- credits: The number of CME credits (numeric value)
-- credit_type: The type of credit (e.g., "AMA PRA Category 1", "AANP Contact Hours", etc.)
-- completion_date: The date of completion (YYYY-MM-DD format)
-- certificate_number: Any certificate or reference number
-- subject: The medical subject/topic
-
-Return ONLY a valid JSON object with these fields. If a field cannot be determined, use null."""
+            system_message=system_prompt
         ).with_model("openai", "gpt-4o")
         
         image_content = ImageContent(image_base64=base64_content)
         
         response = await chat.send_message(UserMessage(
-            text="Extract the CME certificate information from this image.",
+            text="Extract all CME certificate information from this image. Return only the JSON object.",
             file_contents=[image_content]
         ))
         
-        # Parse response
+        logger.info(f"OCR Response for {certificate_id}: {response[:500]}...")
+        
+        # Parse response with improved handling
+        ocr_data = {}
+        parse_error = None
         try:
-            # Clean up response if needed
+            # Clean up response - handle various formats
             response_text = response.strip()
+            
+            # Remove markdown code blocks
             if response_text.startswith("```json"):
                 response_text = response_text[7:]
-            if response_text.startswith("```"):
+            elif response_text.startswith("```"):
                 response_text = response_text[3:]
             if response_text.endswith("```"):
                 response_text = response_text[:-3]
+            response_text = response_text.strip()
+            
+            # Try to find JSON in the response if not pure JSON
+            if not response_text.startswith("{"):
+                import re
+                json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
+                if json_match:
+                    response_text = json_match.group()
             
             ocr_data = json.loads(response_text)
-        except json.JSONDecodeError:
-            ocr_data = {"raw_text": response}
+            
+            # Validate we got at least some data
+            if not any(ocr_data.get(k) for k in ["title", "provider", "credits"]):
+                parse_error = "Could not extract key information"
+                
+        except json.JSONDecodeError as e:
+            parse_error = f"Failed to parse OCR response: {str(e)}"
+            logger.warning(f"JSON parse error for {certificate_id}: {e}. Response: {response_text[:200]}")
+            ocr_data = {"raw_text": response, "parse_error": str(e)}
         
-        # Map credit type to our internal types
+        # Enhanced credit type mapping with more variations
         credit_type_map = {
+            # AMA
             "ama pra category 1": "ama_cat1",
             "ama category 1": "ama_cat1",
+            "category 1 credit": "ama_cat1",
             "category 1": "ama_cat1",
             "ama pra category 2": "ama_cat2",
             "category 2": "ama_cat2",
-            "aanp": "aanp_contact",
+            # AOA
+            "aoa category 1-a": "aoa_1a",
+            "aoa 1a": "aoa_1a",
+            "aoa category 1-b": "aoa_1b",
+            "aoa 1b": "aoa_1b",
+            # NP/PA
             "aanp contact": "aanp_contact",
-            "ancc": "ancc_contact",
-            "ancc contact": "ancc_contact",
+            "aanp": "aanp_contact",
+            "aapa category 1": "aapa_cat1",
             "aapa": "aapa_cat1",
+            "ancc contact": "ancc_contact",
+            "ancc": "ancc_contact",
+            "contact hours": "ancc_contact",
+            # Other
             "pharmacology": "pharmacology",
+            "pharmacotherapeutics": "pharmacology",
+            "moc": "moc",
+            "maintenance of certification": "moc",
+            "self-assessment": "self_assessment",
+            "self assessment": "self_assessment",
+            "ethics": "ethics",
+            "medical ethics": "ethics",
+            "pain management": "pain_mgmt",
+            "opioid": "pain_mgmt",
+            "cne": "cne",
+            "continuing nursing": "cne",
         }
         
         extracted_credit_type = ocr_data.get("credit_type", "")
         if extracted_credit_type:
             normalized_type = extracted_credit_type.lower().strip()
+            matched = False
             for key, value in credit_type_map.items():
                 if key in normalized_type:
                     ocr_data["credit_type_id"] = value
+                    matched = True
                     break
-            else:
+            if not matched:
+                # Keep the original text for display but don't map
                 ocr_data["credit_type_id"] = "ama_cat1"  # Default
+                ocr_data["credit_type_original"] = extracted_credit_type
+        
+        # Determine OCR status based on extraction quality
+        fields_extracted = sum(1 for k in ["title", "provider", "credits", "completion_date"] 
+                              if ocr_data.get(k) not in [None, "", 0])
+        
+        if parse_error:
+            ocr_status = "failed"
+            ocr_error_message = parse_error
+        elif fields_extracted >= 3:
+            ocr_status = "completed"
+        elif fields_extracted >= 1:
+            ocr_status = "partial"  # Some data extracted but needs manual review
+            ocr_error_message = "Some fields could not be extracted. Please review and edit."
+        else:
+            ocr_status = "failed"
+            ocr_error_message = "Could not extract certificate data. Please enter details manually."
         
         # Update certificate with OCR data
         update_data = {
-            "ocr_status": "completed",
+            "ocr_status": ocr_status,
             "ocr_data": ocr_data,
+            "ocr_error": ocr_error_message,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
         if ocr_data.get("title"):
-            update_data["title"] = ocr_data["title"]
+            update_data["title"] = str(ocr_data["title"])[:255]  # Limit length
         if ocr_data.get("provider"):
-            update_data["provider"] = ocr_data["provider"]
+            update_data["provider"] = str(ocr_data["provider"])[:255]
         if ocr_data.get("credits"):
             try:
-                update_data["credits"] = float(ocr_data["credits"])
+                credits_val = ocr_data["credits"]
+                if isinstance(credits_val, str):
+                    # Extract number from string like "1.5 credits"
+                    import re
+                    num_match = re.search(r'[\d.]+', credits_val)
+                    if num_match:
+                        credits_val = num_match.group()
+                update_data["credits"] = float(credits_val)
             except (ValueError, TypeError):
                 pass
         if ocr_data.get("credit_type_id"):
             update_data["credit_type"] = ocr_data["credit_type_id"]
+            update_data["credit_types"] = [ocr_data["credit_type_id"]]
         if ocr_data.get("completion_date"):
-            update_data["completion_date"] = ocr_data["completion_date"]
+            # Validate date format
+            date_str = str(ocr_data["completion_date"])
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+                update_data["completion_date"] = date_str
+            except ValueError:
+                # Try to parse other formats
+                for fmt in ["%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y", "%b %d, %Y"]:
+                    try:
+                        parsed = datetime.strptime(date_str, fmt)
+                        update_data["completion_date"] = parsed.strftime("%Y-%m-%d")
+                        break
+                    except ValueError:
+                        continue
         if ocr_data.get("certificate_number"):
-            update_data["certificate_number"] = ocr_data["certificate_number"]
+            update_data["certificate_number"] = str(ocr_data["certificate_number"])[:100]
         if ocr_data.get("subject"):
-            update_data["subject"] = ocr_data["subject"]
+            update_data["subject"] = str(ocr_data["subject"])[:255]
         
         await db.certificates.update_one(
             {"certificate_id": certificate_id},
@@ -780,10 +880,24 @@ Return ONLY a valid JSON object with these fields. If a field cannot be determin
         return cert
         
     except Exception as e:
-        logger.error(f"OCR Error: {e}")
+        error_msg = str(e)
+        logger.error(f"OCR Error for {certificate_id}: {error_msg}")
+        
+        # Provide helpful error message to user
+        if "rate limit" in error_msg.lower():
+            ocr_error_message = "OCR service is busy. Please try again in a moment or enter details manually."
+        elif "timeout" in error_msg.lower():
+            ocr_error_message = "OCR processing timed out. Please enter details manually."
+        elif not ocr_error_message:
+            ocr_error_message = "OCR processing failed. Please enter certificate details manually."
+        
         await db.certificates.update_one(
             {"certificate_id": certificate_id},
-            {"$set": {"ocr_status": "failed", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {
+                "ocr_status": "failed", 
+                "ocr_error": ocr_error_message,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
         )
         cert = await db.certificates.find_one({"certificate_id": certificate_id}, {"_id": 0})
         return cert
