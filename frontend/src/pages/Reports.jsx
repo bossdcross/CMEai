@@ -38,7 +38,9 @@ const Reports = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [exporting, setExporting] = useState(null);
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  // Generate years from current year back to 1990
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i);
 
   useEffect(() => {
     fetchReportData();
