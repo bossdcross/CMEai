@@ -254,7 +254,8 @@ const Certificates = () => {
     const matchesSearch = cert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           cert.provider.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === "all" || cert.credit_type === filterType;
-    return matchesSearch && matchesType;
+    const matchesYear = filterYear === "all" || (cert.completion_date && cert.completion_date.startsWith(filterYear));
+    return matchesSearch && matchesType && matchesYear;
   });
 
   if (loading) {
