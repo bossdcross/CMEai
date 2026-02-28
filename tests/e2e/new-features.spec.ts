@@ -403,8 +403,8 @@ test.describe('Requirements Provider and Subject Filters', () => {
     // Type a custom provider and add it by clicking the + button
     const providerInput = page.getByTestId('req-provider-input');
     await providerInput.fill('Custom Test Hospital');
-    // Click the + button next to the input to add it
-    await providerInput.locator('..').locator('button').click();
+    // Click the + button (it's the button with just a Plus icon in the parent row)
+    await providerInput.locator('..').locator('button').last().click();
     
     // Should show the badge with the provider
     await expect(page.getByText('Custom Test Hospital')).toBeVisible();
@@ -420,8 +420,8 @@ test.describe('Requirements Provider and Subject Filters', () => {
     // Type a custom subject and add it by clicking the + button
     const subjectInput = page.getByTestId('req-subject-input');
     await subjectInput.fill('Test Oncology');
-    // Click the + button next to the input to add it
-    await subjectInput.locator('..').locator('button').click();
+    // Click the + button (it's the button with just a Plus icon in the parent row)
+    await subjectInput.locator('..').locator('button').last().click();
     
     // Should show the badge with the subject
     await expect(page.getByText('Test Oncology')).toBeVisible();
